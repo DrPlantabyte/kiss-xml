@@ -1,0 +1,24 @@
+[package]
+name = "kiss-xml"
+authors = ["Christopher Collin Hall"]
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+description = "An easy-to-use minimalist schema-less XML parsing library"
+repository = "https://github.com/DrPlantabyte/kiss-xml"
+homepage = "https://github.com/DrPlantabyte/kiss-xml/tree/main/"
+readme = "README.md"
+documentation = "https://docs.rs/kiss-xml/"
+keywords = ["xml", "parser"]
+categories = ["config", "parsing", "text-processing"] # see https://crates.io/category_slugs
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# no required dependencies
+
+[dev-dependencies]
+# no dev dependencies
+
+[build-dependencies]
+# no build dependencies
