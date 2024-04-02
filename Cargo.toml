@@ -18,7 +18,7 @@ categories = ["config", "parsing", "text-processing"] # see https://crates.io/ca
 # no required dependencies
 
 [dev-dependencies]
-# no dev dependencies
+tempfile = "3" # used for testing file I/O in API and unit tests
 
 [build-dependencies]
 # no build dependencies
