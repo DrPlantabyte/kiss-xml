@@ -1,0 +1,21 @@
+name: Test-Staging
+
+on:
+  workflow_run:
+    workflows: ["Build-Staging"]
+    types:
+      - completed
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run tests
+      working-directory: ./
+      run: cargo test --verbose --all-features
