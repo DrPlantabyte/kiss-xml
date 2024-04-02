@@ -22,7 +22,8 @@ jobs:
           echo "$(ls -lah .)" 1>&2 && cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --manifest-path ./Cargo.toml
 
       - name:  Upload coverage reports to Codecov
-        uses:  codecov/codecov-action@v4.0.1
+        uses:  codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug:  DrPlantabyte/kiss-xml
+          fail_ci_if_error: true
