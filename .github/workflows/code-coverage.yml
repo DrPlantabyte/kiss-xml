@@ -8,21 +8,21 @@ on:
 
 jobs:
   test:
-    name:     coverage
-    runs-on:  ubuntu-latest
+    name:      coverage
+    runs-on:   ubuntu-latest
     container:
-      image:  xd009642/tarpaulin:develop-nightly
-      options:--security-opt seccomp=unconfined
+      image:   xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name:  Checkout repository
+        uses:  actions/checkout@v4
 
-      - name: Generate code coverage
+      - name:  Generate code coverage
         run: |
           echo "$(ls -lah .)" 1>&2 && cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --manifest-path ./Cargo.toml
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
+      - name:  Upload coverage reports to Codecov
+        uses:  codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: DrPlantabyte/kiss-xml
+          slug:  DrPlantabyte/kiss-xml
