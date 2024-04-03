@@ -10,16 +10,31 @@ use dom::Node;
 pub fn mock() -> i32 {42}
 
 
-/// Escapes a text string into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
+/// Escapes a subset of XML reserved characters (&, <, and >) in a text string
+/// into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
+pub fn text_escape(text: impl Into<String>) -> String {
+	todo!()
+}
+
+/// Escapes a subset of XML reserved characters (&, ', and ") in an attribute
+/// into XML-compatible text, eg replacing "&" with "&amp;" and "'" with "&apos;"
+pub fn attribute_escape(text: impl Into<String>) -> String {
+	todo!()
+}
+
+/// Escapes all special characters (&, <, >, ', and ") in a string into an
+/// XML-compatible string, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn escape(text: impl Into<String>) -> String {
 	todo!()
 }
 
-/// Reverses any escaped characters in XML-compatible text to regenerate the original test, eg replacing "&amp;" with "&" and "&lt;" with "<"
+/// Reverses any escaped characters (&, <, >, ', and ") in XML-compatible text
+/// to regenerate the original test, eg replacing "&amp;" with "&" and "&lt;"
+/// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
 	todo!()
 }
 
-pub fn read_from_filepath(path: &Path) -> Result<Node::Element, errors::KissXmlError> {
+pub fn read_from_filepath(path: &Path) -> Result<Node::Document, errors::KissXmlError> {
 	todo!()
 }

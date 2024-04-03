@@ -7,7 +7,13 @@ This Rust library provides ...
 * ...
 
 ## What's NOT included:
-* ...
+* Namespace support
+* CDATA
+* Document type declarations (DTDs will be preserved but not interpreted)
+* Parsing character encodings other than UTF-8
+
+If you need any of the above XML features, then this library is too simple for
+your needs. Try another XML parsing crate instead.
 
 ## Quickstart Guide
 TODO
