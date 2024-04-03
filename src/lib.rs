@@ -4,7 +4,7 @@
 use std::path::Path;
 
 mod errors;
-mod dom;
+pub mod dom;
 use dom::Node;
 
 pub fn mock() -> i32 {42}
@@ -35,6 +35,7 @@ pub fn unescape(text: impl Into<String>) -> String {
 	todo!()
 }
 
-pub fn read_from_filepath(path: &Path) -> Result<Node::Document, errors::KissXmlError> {
+/// Reads the file from the given filepath and parses it as an XML document
+pub fn read_from_filepath(path: &Path) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }

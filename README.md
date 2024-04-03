@@ -4,7 +4,9 @@
 This Rust library provides ...
 
 ## What's included:
-* ...
+* Parse XML files and strings to a DOM
+* Handles elements, text, and comments
+* DOM is mutable and can be saved as a string
 
 ## What's NOT included:
 * Namespace support
