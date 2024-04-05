@@ -93,7 +93,7 @@ fn test_dom_parsing() {
 	assert_eq!(root.first_element_by_name("to").unwrap().text().unwrap().as_str(), "Jani", "content of <to> is wrong");
 	assert_eq!(root.elements_by_name("paragraph").count(), 2, "Wrong number of <paragraph> elements found in DOM");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().text().unwrap().as_str(), "Don't forget me this weekend!", "content of first <paragraph> is wrong");
-	assert_eq!(root.first_element_by_name("paragraph").unwrap().all_nodes()[0].text().unwrap().as_str(), "Don't forget ", "content of first <paragraph> first node is wrong");
+	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().collect()[0].text().unwrap().as_str(), "Don't forget ", "content of first <paragraph> first node is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().count(), 3, "First <paragraph> should have 3 nodes: text, element, text");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().filter(|n| n.is_text()).count(), 0, "Wrong number of comment nodes found in root child nodes");
 	assert_eq!(root.elements_by_name("paragraph")[1].text().unwrap().as_str(), " - Jani", "Wrong number of <paragraph> elements found in DOM");

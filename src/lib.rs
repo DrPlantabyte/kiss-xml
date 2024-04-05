@@ -1,6 +1,7 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
+//#![deny(unused_must_use)]
+//#![deny(missing_docs)]
 
+use std::io::Read;
 use std::path::Path;
 
 mod errors;
@@ -36,6 +37,14 @@ pub fn unescape(text: impl Into<String>) -> String {
 }
 
 /// Reads the file from the given filepath and parses it as an XML document
-pub fn read_from_filepath(path: &Path) -> Result<dom::Document, errors::KissXmlError> {
+pub fn parse_filepath(path: &Path) -> Result<dom::Document, errors::KissXmlError> {
+	todo!()
+}
+
+pub fn parse_stream(reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
+	todo!()
+}
+
+pub fn parse_str(xml_string: &str) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }

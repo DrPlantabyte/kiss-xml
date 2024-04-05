@@ -13,15 +13,17 @@ pub enum KissXmlError {
 impl Display for KissXmlError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {
-			KissXmlError::ParsingError(e) => Display::fmt(&e, f),
+			KissXmlError::ParsingError(e) => write!(f, "ParsingError: {}", e.msg),
 			KissXmlError::IOError(e) => Display::fmt(&e, f)
 		}
 	}
 }
 
+impl std::error::Error for KissXmlError{}
+
 
 /// Represents an error that occurs during parsing with additional information.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParsingError {
 	/// The error message.
 	pub msg: String
