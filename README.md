@@ -4,10 +4,20 @@
 This Rust library provides ...
 
 ## What's included:
-* ...
+* Parse XML files and strings to a DOM
+* Handles elements, text, and comments
+* DOM is mutable and can be saved as a string and to files
 
 ## What's NOT included:
-* ...
+* Namespace support
+* Schema handling
+* CDATA
+* Document type declarations (DTDs will be preserved but not interpreted)
+* Parsing character encodings other than UTF-8
+* Typed XML data (eg integer attribute values)
+
+If you need any of the above XML features, then this library is too simple for
+your needs. Try another XML parsing crate instead.
 
 ## Quickstart Guide
 TODO

@@ -15,10 +15,10 @@ categories = ["config", "parsing", "text-processing"] # see https://crates.io/ca
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# no required dependencies
+dyn-clone = "1"
 
 [dev-dependencies]
-# no dev dependencies
+tempfile = "3" # used for testing file I/O in API and unit tests
 
 [build-dependencies]
 # no build dependencies
