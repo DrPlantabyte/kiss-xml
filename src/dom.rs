@@ -4,7 +4,9 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
+use std::fs::File;
 use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice::Iter;
 
@@ -16,14 +18,19 @@ impl Document {
 	pub fn doctype_defs(&self) -> Iter<DTD> {
 		todo!()
 	}
-}
 
-impl Document {
 	pub fn declaration(&self) -> Option<&Declaration> {
 		todo!()
 	}
 
 	pub fn to_string(&self, indent: &str) -> String {
+		todo!()
+	}
+
+	pub fn write_to_filepath(&self, path: &Path, indent: Option<&str>) -> std::io::Result<()> {
+		todo!()
+	}
+	pub fn write_to_file(&self, file: &File, indent: Option<&str>) -> std::io::Result<()> {
 		todo!()
 	}
 }
@@ -55,67 +62,21 @@ impl PartialEq<Self> for Document {
 	}
 }
 
-pub enum Node {
-	Element(Element),
-	Text(Text),
-	Comment(Comment)
-}
+pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 
-impl Node {
+	fn name(&self) -> String;
 
-	pub fn name(&self) -> String {
-		todo!()
-	}
+	fn text(&self) -> Option<String>;
 
-	pub fn text(&self) -> String {
-		todo!()
-	}
+	fn is_element(&self) -> bool;
 
-	pub fn is_element(&self) -> bool {
-		todo!()
-	}
+	fn is_text(&self) -> bool;
 
-	pub fn is_text(&self) -> bool {
-		todo!()
-	}
-
-	pub fn is_comment(&self) -> bool {
-		todo!()
-	}
-}
-
-impl std::fmt::Display for Node {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
-	}
-}
-
-impl std::fmt::Debug for Node {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
-	}
-}
-
-impl PartialEq<Self> for Node {
-	fn eq(&self, other: &Self) -> bool {
-		todo!()
-	}
-}
-
-impl PartialOrd for Node{
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		todo!()
-	}
-}
-
-impl Hash for Node {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		todo!()
-	}
+	fn is_comment(&self) -> bool;
 }
 
 #[derive(Clone)]
-pub struct Element{
+pub struct Element {
 	// TODO
 }
 
@@ -125,7 +86,7 @@ impl Element {
 		todo!()
 	}
 
-	pub fn new_with_attributes(name: &str, attributes: HashMap<String, String>) -> Self {
+	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
 		todo!()
 	}
 
@@ -133,7 +94,7 @@ impl Element {
 		todo!()
 	}
 
-	pub fn children(&self) -> Iter<Node>{
+	pub fn children(&self) -> Iter<Box<dyn Node>>{
 		todo!()
 	}
 
@@ -157,7 +118,11 @@ impl Element {
 		todo!()
 	}
 
-	pub fn search<P>(&self, predicate: P) -> Iter<Node> where P: FnMut(&Node) -> bool {
+	pub fn remove_attr(&mut self, attr_name: &str) -> Option<String> {
+		todo!()
+	}
+
+	pub fn search<P>(&self, predicate: P) -> Iter<Box<dyn Node>> where P: FnMut(&Box<dyn Node>) -> bool {
 		// recursive
 		todo!()
 	}
@@ -182,19 +147,19 @@ impl Element {
 		todo!()
 	}
 
-	pub fn append(&mut self, node: Node) {
+	pub fn append(&mut self, node: impl Node) {
 		todo!()
 	}
 
-	pub fn insert(&mut self, index: usize, node: Node) {
+	pub fn insert(&mut self, index: usize, node: impl Node) {
 		todo!()
 	}
 
-	pub fn remove(&mut self, index: usize) -> Option<Node> {
+	pub fn remove(&mut self, index: usize) -> Option<Box<dyn Node>> {
 		todo!()
 	}
 
-	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: FnMut(&Node) -> bool {
+	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: FnMut(&dyn Node) -> bool {
 		// recursive, returns count
 		todo!()
 	}
@@ -220,31 +185,209 @@ impl Element {
 
 }
 
+impl Node for Element{
+	fn name(&self) -> String {
+		todo!()
+	}
+
+	fn text(&self) -> Option<String> {
+		todo!()
+	}
+
+	fn is_element(&self) -> bool {
+		todo!()
+	}
+
+	fn is_text(&self) -> bool {
+		todo!()
+	}
+
+	fn is_comment(&self) -> bool {
+		todo!()
+	}
+}
+
+impl PartialOrd for Element {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		todo!()
+	}
+}
+
+impl PartialEq<Self> for Element {
+	fn eq(&self, other: &Self) -> bool {
+		todo!()
+	}
+}
+
+impl Hash for Element {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		todo!()
+	}
+}
+
+
+impl std::fmt::Display for Element {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
+impl std::fmt::Debug for Element {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
 #[derive(Clone)]
-pub struct Text{
-	// TODO
+pub struct Text {
+	pub content: String
 }
 
 impl Text {
 	pub fn new(text: &str) -> Self {
 		todo!()
 	}
+
+	pub fn name(&self) -> String {
+		todo!()
+	}
+}
+
+impl Node for Text{
+	fn name(&self) -> String {
+		todo!()
+	}
+
+	fn text(&self) -> Option<String> {
+		todo!()
+	}
+
+	fn is_element(&self) -> bool {
+		todo!()
+	}
+
+	fn is_text(&self) -> bool {
+		todo!()
+	}
+
+	fn is_comment(&self) -> bool {
+		todo!()
+	}
+}
+
+impl PartialOrd for Text {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		todo!()
+	}
+}
+
+impl PartialEq<Self> for Text {
+	fn eq(&self, other: &Self) -> bool {
+		todo!()
+	}
+}
+
+impl Hash for Text {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		todo!()
+	}
+}
+
+
+impl std::fmt::Display for Text {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
+impl std::fmt::Debug for Text {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
 }
 
 #[derive(Clone)]
 pub struct Comment{
-	// TODO
+	pub content: String
 }
 
 impl Comment {
 	pub fn new(comment: &str) -> Self {
 		todo!()
 	}
+
 }
 
+impl Node for Comment{
+	fn name(&self) -> String {
+		todo!()
+	}
+
+	fn text(&self) -> Option<String> {
+		todo!()
+	}
+
+	fn is_element(&self) -> bool {
+		todo!()
+	}
+
+	fn is_text(&self) -> bool {
+		todo!()
+	}
+
+	fn is_comment(&self) -> bool {
+		todo!()
+	}
+}
+
+impl PartialOrd for Comment {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		todo!()
+	}
+}
+
+impl PartialEq<Self> for Comment {
+	fn eq(&self, other: &Self) -> bool {
+		todo!()
+	}
+}
+
+impl Hash for Comment {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		todo!()
+	}
+}
+
+impl std::fmt::Display for Comment {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
+impl std::fmt::Debug for Comment {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct Declaration {
 	// TODO
 }
+
+impl std::fmt::Display for Declaration {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct DTD {
 	// TODO
+}
+
+impl std::fmt::Display for DTD {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
 }
