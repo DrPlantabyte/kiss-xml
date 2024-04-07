@@ -262,7 +262,7 @@ fn test_dom_to_file() {
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
 	let mut tmpfile = File::create(file_path.clone()).unwrap();
-	doc.write_to_file(&tmpfile, Some(indent)).unwrap();
+	doc.write_to_file_with_indent(&tmpfile, indent).unwrap();
 	drop(tmpfile); // close the file before re-opening
 	// check what was written
 	let file_content = std::fs::read_to_string(file_path).unwrap();
@@ -280,7 +280,7 @@ fn test_dom_to_filepath() {
 	// Write sample XML to a file
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
-	doc.write_to_filepath(&file_path, Some(indent)).unwrap();
+	doc.write_to_filepath_with_indent(&file_path, indent).unwrap();
 	// check what was written
 	let file_content = std::fs::read_to_string(file_path).unwrap();
 	assert_eq!(file_content.as_str(), xml_str, "Source XML not recreated by write_to_filepath() method");

@@ -1,11 +1,6 @@
 #![deny(unused_must_use)]
 #![deny(missing_docs)]
 
-/*!
-# KISS-XML: Keep It Super Simple XML
-
- */
-
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
@@ -20,6 +15,11 @@ pub struct Document {
 }
 
 impl Document {
+
+	pub fn new(root: Element) -> Self {
+		todo!()
+	}
+
 	pub fn doctype_defs(&self) -> Iter<DTD> {
 		todo!()
 	}
@@ -36,10 +36,16 @@ impl Document {
 		todo!()
 	}
 
-	pub fn write_to_filepath(&self, path: &Path, indent: Option<&str>) -> std::io::Result<()> {
+	pub fn write_to_filepath(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
+		self.write_to_filepath_with_indent(path, "  ")
+	}
+	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: &str) -> std::io::Result<()> {
 		todo!()
 	}
-	pub fn write_to_file(&self, file: &File, indent: Option<&str>) -> std::io::Result<()> {
+	pub fn write_to_file(&self, file: &File, indent: &str) -> std::io::Result<()> {
+		self.write_to_file_with_indent(file, "  ")
+	}
+	pub fn write_to_file_with_indent(&self, file: &File, indent: &str) -> std::io::Result<()> {
 		todo!()
 	}
 	pub fn root_element(&self) -> &Element {
@@ -93,6 +99,14 @@ impl Element {
 	}
 
 	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
+		todo!()
+	}
+
+	pub fn new_with_text(name: &str, text: impl Into<String>) -> Self {
+		todo!()
+	}
+
+	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<&str, &str>, text: impl Into<String>) -> Self {
 		todo!()
 	}
 

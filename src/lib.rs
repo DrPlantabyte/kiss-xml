@@ -1,6 +1,19 @@
 #![deny(unused_must_use)]
 #![deny(missing_docs)]
 
+/*!
+# KISS-XML: Keep It Super Simple XML
+
+This Rust library provides an easy-to-use Document Object Model (DOM) for
+reading and writing XML files. Unlike many other XML parsers, KISS-XML simply
+parses the given XML to a full in-memory DOM, which you can then modify and
+serialize back to XML. No schemas or looping required.
+
+This library does not aim to support all XML specifications, only the most
+commonly used subset of features.
+
+ */
+
 use std::io::Read;
 use std::path::Path;
 

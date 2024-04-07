@@ -41,8 +41,69 @@ fn main() {
 }
 ```
 
-TODO
+The XML content will be converted into a Document Object Model (DOM) with a
+single root element. A DOM is a tree-like data structure made up of XML Element,
+Text, and Comment nodes. You can explore the DOM element-by-element with the
+`.elements_by_name(&str)` and `.first_element_by_name(&str)` methods, scan the
+children of an element with the `.child_*()` methods, or do a recursive search
+using the `.search(...)` and `.search_*(...)` methods.
 
-## More Examples
-TODO
+For example:
+```rust
+fn main() {
+	use kiss_xml;
+	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<name>My Settings</name>
+	<sound>
+		<property name="volume" value="11" />
+		<property name="mixer" value="standard" />
+	</sound>
+<config>
+"#;
+	// parse XML to a document object model (DOM)
+	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");
+	// print all sound properties
+	let properties = dom.root_element()
+		.first_element_by_name("sound").expect("No <sound> element")
+		.elements_by_name("property");
+	for prop in properties {
+		println!(
+			"{} = {}",
+			prop.get_attr("name").expect("missing name attribute"),
+			prop.get_attr("value").expect("missing value attribute")
+		);
+	}
+	// print children of the root element
+	for e in dom.root_element().child_elements() {
+		println!("child element <{}>", e.name())
+	}
+	// print all elements
+	for e in dom.root_element().search_elements(|_| true) {
+		println!("found element <{}>", e.name())
+	}
+}
+```
+
+To modify the DOM, use the `.*_mut(...)` methods to get mutable references to
+the elements, and you can convert the DOM to a string with the `.to_string()`
+method or write it to a file with `.write_to_filepath(...)`.
+
+For example:
+```rust
+fn main() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	// make a DOM from scratch
+	let mut doc = Document::new(Element::new("politicians"));
+	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton"));
+	doc.root_element_mut().append(Element::new_with_text("person", "Bob Dole"));
+	// write to file
+	doc.write_to_filepath("politics.xml");
+}
+```
+
+## License
+This library is open source, licensed under the MIT License. You may use it
+as-is or with modification, without any limitations.
 
