@@ -56,6 +56,50 @@ fn sample_xml_2() -> &'static str {
 </root>"#
 }
 
+fn sample_xml_3() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns="internal://ns/a">
+	<width>200</width>
+	<height>150</height>
+</root>"#
+}
+
+fn sample_xml_4() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:img="internal://ns/a" xmlns="internal://ns/b">
+	<width>200</width>
+	<height>150</height>
+	<img:width>200</img:width>
+	<img:height>150</img:height>
+	<dim:width>200</dim:width>
+	<dim:height>150</dim:height>
+</root>"#
+}
+
+fn sample_xml_5() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>200</width>
+	<height>150</height>
+	<img:width>200</img:width>
+	<img:height>150</img:height>
+	<dim:width>200</dim:width>
+	<dim:height>150</dim:height>
+</root>"#
+}
+
+fn sample_xml_6() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<img:root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>200</width>
+	<height>150</height>
+	<img:width>200</img:width>
+	<img:height>150</img:height>
+	<dim:width>200</dim:width>
+	<dim:height>150</dim:height>
+</root>"#
+}
+
 #[test]
 fn test_load_from_file() {
 	use kiss_xml;
@@ -300,4 +344,11 @@ fn test_debug_display(){
 	let doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	println!("Document:\n{:?}\n\n", doc);
 	println!("Root Element:\n{:?}\n\n", doc.root_element());
+}
+
+#[test]
+fn test_namespaces_1() {
+	use kiss_xml;
+	let doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
+
 }
