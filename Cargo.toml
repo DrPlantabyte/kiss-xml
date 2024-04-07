@@ -1,5 +1,5 @@
 [package]
-name = "kiss-xml"
+name = "kiss_xml"
 authors = ["Christopher Collin Hall"]
 version = "0.0.0"
 edition = "2021"

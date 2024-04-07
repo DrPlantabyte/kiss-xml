@@ -1,5 +1,10 @@
-//#![deny(unused_must_use)]
-//#![deny(missing_docs)]
+#![deny(unused_must_use)]
+#![deny(missing_docs)]
+
+/*!
+# KISS-XML: Keep It Super Simple XML
+
+ */
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -23,7 +28,11 @@ impl Document {
 		todo!()
 	}
 
-	pub fn to_string(&self, indent: &str) -> String {
+	pub fn to_string(&self) -> String {
+		self.to_string_with_indent("  ")
+	}
+
+	pub fn to_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
 
@@ -33,9 +42,6 @@ impl Document {
 	pub fn write_to_file(&self, file: &File, indent: Option<&str>) -> std::io::Result<()> {
 		todo!()
 	}
-}
-
-impl Document {
 	pub fn root_element(&self) -> &Element {
 		todo!()
 	}
@@ -107,6 +113,10 @@ impl Element {
 	}
 
 	pub fn elements_by_name(&self, name: &str) -> Iter<Element>{
+		todo!()
+	}
+
+	pub fn attributes(&self) -> &HashMap<&str, &str> {
 		todo!()
 	}
 

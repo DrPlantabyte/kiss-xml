@@ -1,5 +1,5 @@
-//#![deny(unused_must_use)]
-//#![deny(missing_docs)]
+#![deny(unused_must_use)]
+#![deny(missing_docs)]
 
 use std::io::Read;
 use std::path::Path;
@@ -7,8 +7,6 @@ use std::path::Path;
 mod errors;
 pub mod dom;
 use dom::Node;
-
-pub fn mock() -> i32 {42}
 
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
@@ -37,7 +35,7 @@ pub fn unescape(text: impl Into<String>) -> String {
 }
 
 /// Reads the file from the given filepath and parses it as an XML document
-pub fn parse_filepath(path: &Path) -> Result<dom::Document, errors::KissXmlError> {
+pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }
 

@@ -158,7 +158,7 @@ fn test_modify_dom() {
 		inserted text
 	</mydata>
 </root>"#;
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -190,7 +190,7 @@ fn test_remove_1(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -214,7 +214,7 @@ fn test_remove_2(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn test_remove_3(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -247,7 +247,7 @@ fn test_dom_to_string() {
 	let xml_str = sample_xml_2();
 	let doc = kiss_xml::parse_str(xml_str).unwrap();
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
 }
 
 #[test]
@@ -276,7 +276,7 @@ fn test_dom_to_filepath() {
 	let xml_str = sample_xml_2();
 	let doc = kiss_xml::parse_str(xml_str).unwrap();
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
 	// Write sample XML to a file
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
