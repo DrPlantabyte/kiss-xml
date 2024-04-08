@@ -1,4 +1,4 @@
-use kiss_xml::dom::Node;
+use kiss_xml::dom::{Element, Node};
 
 #[test]
 fn test_xml_escapes() {
@@ -66,7 +66,7 @@ fn sample_xml_3() -> &'static str {
 
 fn sample_xml_4() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
-<root xmlns:img="internal://ns/a" xmlns="internal://ns/b">
+<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
 	<width>200</width>
 	<height>150</height>
 	<img:width>200</img:width>
@@ -349,6 +349,36 @@ fn test_debug_display(){
 #[test]
 fn test_namespaces_1() {
 	use kiss_xml;
-	let doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
+	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
+	// check that namespaces were correctly parsed (no alias)
+	assert_eq!(doc.root_element().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
+	assert!(doc.root_element().namespace_alias().is_none(), "XML namespace alias not correctly parsed");
+	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
+	// check that adding a new element inherits the namespace of the parent unless otherwise specified
+	doc.root_element_mut().append(Element::new("depth", Some("50"), None, None, None));
+	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly inherited");
+	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_alias().is_none(), "XML namespace alias not correctly inherited");
+}
 
+#[test]
+fn test_namespaces_2() {
+	use kiss_xml;
+	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
+	assert!(doc.root_element().namespace().is_none(), "XML namespace not correctly parsed");
+	todo!("test aliases with default namespace")
+}
+
+#[test]
+fn test_namespaces_3() {
+	use kiss_xml;
+	let mut doc = kiss_xml::parse_str(sample_xml_5()).unwrap();
+	todo!("test aliases with no default namespace")
+}
+
+#[test]
+fn test_namespaces_4() {
+	use kiss_xml;
+	let mut doc = kiss_xml::parse_str(sample_xml_6()).unwrap();
+	todo!("test aliases with root using aliased namespace")
 }

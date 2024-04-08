@@ -94,21 +94,35 @@ pub struct Element {
 
 impl Element {
 
-	pub fn new(name: &str) -> Self {
+	pub fn new<TEXT: Into<String>>(name: TEXT, text: Option<TEXT>, attributes: Option<HashMap<TEXT, TEXT>>, xmlns: Option<TEXT>, xmlns_alias: Option<TEXT>) {todo!()}
+
+	pub fn new_from_name<TEXT: Into<String>>(name: &str) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
+	pub fn new_with_attributes<TEXT: Into<String>>(name: TEXT, attributes: HashMap<TEXT, TEXT>) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_text(name: &str, text: impl Into<String>) -> Self {
+	pub fn new_with_text<TEXT: Into<String>>(name: TEXT, text: TEXT) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<&str, &str>, text: impl Into<String>) -> Self {
+	pub fn new_with_attributes_and_text<TEXT: Into<String>>(name: TEXT, attributes: HashMap<TEXT, TEXT>, text: TEXT) -> Self {
 		todo!()
 	}
+
+	pub fn namespace(&self) -> Option<String> {
+		todo!()
+	}
+
+	pub fn namespace_alias(&self) -> Option<String> {
+		todo!()
+	}
+
+	fn namespace_aliases(&self) -> &Option<HashMap<String, String>> {todo!()}
+
+	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_aliases: Option<HashMap<String, String>>) { todo!()}
 
 	pub fn child_elements(&self) -> Iter<Element>{
 		todo!()
@@ -173,10 +187,12 @@ impl Element {
 
 	pub fn append(&mut self, node: impl Node) {
 		todo!()
+		// TODO: if this is an element, set the namespace context
 	}
 
 	pub fn insert(&mut self, index: usize, node: impl Node) {
 		todo!()
+		// TODO: if this is an element, set the namespace context
 	}
 
 	pub fn remove(&mut self, index: usize) -> Option<Box<dyn Node>> {
