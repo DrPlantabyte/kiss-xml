@@ -338,6 +338,7 @@ fn test_debug_display(){
 #[test]
 fn test_namespaces_1() {
 	use http::Uri;
+	use std::str::FromStr;
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
 	// check that namespaces were correctly parsed (no prefix)
@@ -345,7 +346,7 @@ fn test_namespaces_1() {
 	assert!(doc.root_element().namespace_prefix().is_none(), "XML namespace prefix not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/a"))).count(), 2, "XML namespace not correctly inherited");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly inherited");
 	// check that adding a new element inherits the namespace of the parent unless otherwise specified
 	doc.root_element_mut().append(Element::new("depth", Some("50"), None, None, None));
 	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly inherited");
@@ -355,14 +356,15 @@ fn test_namespaces_1() {
 #[test]
 fn test_namespaces_2() {
 	use http::Uri;
+	use std::str::FromStr;
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
 	assert!(doc.root_element().namespace().is_none(), "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace(None).count(), 3, "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("dim")).count(), 1, "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/a"))).count(), 2, "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/b"))).count(), 1, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/b").unwrap())).count(), 1, "XML namespace not correctly parsed");
 	// check to_string
 	assert_eq!(doc.to_string_with_indent("\t").as_str(), sample_xml_4(), "XML not regenerated correctly")
 }

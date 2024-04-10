@@ -95,21 +95,21 @@ pub struct Element {
 
 impl Element {
 
-	pub fn new<TEXT: Into<String>>(name: TEXT, text: Option<TEXT>, attributes: Option<HashMap<TEXT, TEXT>>, xmlns: Option<TEXT>, xmlns_prefix: Option<&str>) {todo!()}
+	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<&str, &str>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>) -> Self {todo!()}
 
-	pub fn new_from_name<TEXT: Into<String>>(name: impl Into<String>) -> Self {
+	pub fn new_from_name(name: impl Into<String>) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_attributes<TEXT: Into<String>>(name: TEXT, attributes: HashMap<TEXT, TEXT>) -> Self {
+	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_text<TEXT: Into<String>>(name: TEXT, text: TEXT) -> Self {
+	pub fn new_with_text(name: &str, text: &str) -> Self {
 		todo!()
 	}
 
-	pub fn new_with_attributes_and_text<TEXT: Into<String>>(name: TEXT, attributes: HashMap<TEXT, TEXT>, text: TEXT) -> Self {
+	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<&str, &str>, text: &str) -> Self {
 		todo!()
 	}
 
