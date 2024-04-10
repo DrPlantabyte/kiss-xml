@@ -1,5 +1,5 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
+// #![deny(unused_must_use)]
+// #![deny(missing_docs)]
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -9,6 +9,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice::Iter;
+use http::Uri;
 
 pub struct Document {
 	// TODO
@@ -32,20 +33,20 @@ impl Document {
 		self.to_string_with_indent("  ")
 	}
 
-	pub fn to_string_with_indent(&self, indent: &str) -> String {
+	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
 		todo!()
 	}
 
 	pub fn write_to_filepath(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
 		self.write_to_filepath_with_indent(path, "  ")
 	}
-	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: &str) -> std::io::Result<()> {
+	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
 		todo!()
 	}
-	pub fn write_to_file(&self, file: &File, indent: &str) -> std::io::Result<()> {
+	pub fn write_to_file(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
 		self.write_to_file_with_indent(file, "  ")
 	}
-	pub fn write_to_file_with_indent(&self, file: &File, indent: &str) -> std::io::Result<()> {
+	pub fn write_to_file_with_indent(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
 		todo!()
 	}
 	pub fn root_element(&self) -> &Element {
@@ -94,9 +95,9 @@ pub struct Element {
 
 impl Element {
 
-	pub fn new<TEXT: Into<String>>(name: TEXT, text: Option<TEXT>, attributes: Option<HashMap<TEXT, TEXT>>, xmlns: Option<TEXT>, xmlns_alias: Option<TEXT>) {todo!()}
+	pub fn new<TEXT: Into<String>>(name: TEXT, text: Option<TEXT>, attributes: Option<HashMap<TEXT, TEXT>>, xmlns: Option<TEXT>, xmlns_prefix: Option<&str>) {todo!()}
 
-	pub fn new_from_name<TEXT: Into<String>>(name: &str) -> Self {
+	pub fn new_from_name<TEXT: Into<String>>(name: impl Into<String>) -> Self {
 		todo!()
 	}
 
@@ -116,13 +117,21 @@ impl Element {
 		todo!()
 	}
 
-	pub fn namespace_alias(&self) -> Option<String> {
+	pub fn namespace_prefix(&self) -> Option<String> {
 		todo!()
 	}
 
-	fn namespace_aliases(&self) -> &Option<HashMap<String, String>> {todo!()}
+	pub fn elements_by_namespace(&self, namespace: Option<&Uri>) -> Iter<Element>{
+		todo!()
+	}
 
-	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_aliases: Option<HashMap<String, String>>) { todo!()}
+	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> Iter<Element>{
+		todo!()
+	}
+
+	fn namespace_prefixes(&self) -> &Option<HashMap<String, String>> {todo!()}
+
+	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
 
 	pub fn child_elements(&self) -> Iter<Element>{
 		todo!()
@@ -132,15 +141,15 @@ impl Element {
 		todo!()
 	}
 
-	pub fn first_element_by_name(&self, name: &str) -> Option<&Element> {
+	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
 		todo!()
 	}
 
-	pub fn first_element_by_name_mut(&mut self, name: &str) -> Option<&mut Element> {
+	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
 		todo!()
 	}
 
-	pub fn elements_by_name(&self, name: &str) -> Iter<Element>{
+	pub fn elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
 		todo!()
 	}
 
@@ -148,15 +157,15 @@ impl Element {
 		todo!()
 	}
 
-	pub fn get_attr(&self, attr_name: &str) -> Option<String> {
+	pub fn get_attr(&self, attr_name: impl Into<String>) -> Option<String> {
 		todo!()
 	}
 
-	pub fn set_attr(&mut self, attr_name: &str, value: &str) {
+	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) {
 		todo!()
 	}
 
-	pub fn remove_attr(&mut self, attr_name: &str) -> Option<String> {
+	pub fn remove_attr(&mut self, attr_name: impl Into<String>) -> Option<String> {
 		todo!()
 	}
 
@@ -170,7 +179,7 @@ impl Element {
 		todo!()
 	}
 
-	pub fn search_elements_by_name(&self, name: &str) -> Iter<Element>{
+	pub fn search_elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
 		// recursive
 		todo!()
 	}
@@ -218,7 +227,7 @@ impl Element {
 		todo!()
 	}
 
-	pub fn remove_elements_by_name(&mut self, name: &str) -> usize {
+	pub fn remove_elements_by_name(&mut self, name: impl Into<String>) -> usize {
 		// returns count
 		todo!()
 	}
@@ -284,7 +293,7 @@ pub struct Text {
 }
 
 impl Text {
-	pub fn new(text: &str) -> Self {
+	pub fn new(text: impl Into<String>) -> Self {
 		todo!()
 	}
 
@@ -352,7 +361,7 @@ pub struct Comment{
 }
 
 impl Comment {
-	pub fn new(comment: &str) -> Self {
+	pub fn new(comment: impl Into<String>) -> Self {
 		todo!()
 	}
 

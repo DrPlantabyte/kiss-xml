@@ -1,5 +1,5 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
+// #![deny(unused_must_use)]
+// #![deny(missing_docs)]
 
 /*!
 # KISS-XML: Keep It Super Simple XML

@@ -69,26 +69,15 @@ fn sample_xml_4() -> &'static str {
 <root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
 	<width>200</width>
 	<height>150</height>
+	<depth>50</depth>
 	<img:width>200</img:width>
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
-	<dim:height>150</dim:height>
 </root>"#
 }
 
 fn sample_xml_5() -> &'static str {
-	r#"<?xml version="1.0" encoding="UTF-8"?>
-<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
-	<width>200</width>
-	<height>150</height>
-	<img:width>200</img:width>
-	<img:height>150</img:height>
-	<dim:width>200</dim:width>
-	<dim:height>150</dim:height>
-</root>"#
-}
-
-fn sample_xml_6() -> &'static str {
+	// Note: XML elements only inherit the default namespace of their parent, not the prefixed namespace
 	r#"<?xml version="1.0" encoding="UTF-8"?>
 <img:root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
 	<width>200</width>
@@ -348,37 +337,41 @@ fn test_debug_display(){
 
 #[test]
 fn test_namespaces_1() {
+	use http::Uri;
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
-	// check that namespaces were correctly parsed (no alias)
+	// check that namespaces were correctly parsed (no prefix)
 	assert_eq!(doc.root_element().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
-	assert!(doc.root_element().namespace_alias().is_none(), "XML namespace alias not correctly parsed");
+	assert!(doc.root_element().namespace_prefix().is_none(), "XML namespace prefix not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/a"))).count(), 2, "XML namespace not correctly inherited");
 	// check that adding a new element inherits the namespace of the parent unless otherwise specified
 	doc.root_element_mut().append(Element::new("depth", Some("50"), None, None, None));
 	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap().as_str(), "internal://ns/a", "XML namespace not correctly inherited");
-	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_alias().is_none(), "XML namespace alias not correctly inherited");
+	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
 }
 
 #[test]
 fn test_namespaces_2() {
+	use http::Uri;
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
 	assert!(doc.root_element().namespace().is_none(), "XML namespace not correctly parsed");
-	todo!("test aliases with default namespace")
+	assert_eq!(doc.root_element().elements_by_namespace(None).count(), 3, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("dim")).count(), 1, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/a"))).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::parse("internal://ns/b"))).count(), 1, "XML namespace not correctly parsed");
+	// check to_string
+	assert_eq!(doc.to_string_with_indent("\t").as_str(), sample_xml_4(), "XML not regenerated correctly")
 }
 
 #[test]
 fn test_namespaces_3() {
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_5()).unwrap();
-	todo!("test aliases with no default namespace")
-}
-
-#[test]
-fn test_namespaces_4() {
-	use kiss_xml;
-	let mut doc = kiss_xml::parse_str(sample_xml_6()).unwrap();
-	todo!("test aliases with root using aliased namespace")
+	assert_eq!(doc.root_element().namespace_prefix().unwrap().as_str(), "img", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed or inherited");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(None).count(), 2, "XML namespace not correctly parsed or inherited");
 }
