@@ -1,5 +1,5 @@
-// #![deny(unused_must_use)]
-// #![deny(missing_docs)]
+#![deny(unused_must_use)]
+#![deny(missing_docs)]
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -95,9 +95,9 @@ pub struct Element {
 
 impl Element {
 
-	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<&str, &str>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>) -> Self {todo!()}
+	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<&str, &str>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option(&[&dyn Node])) -> Self {todo!()}
 
-	pub fn new_from_name(name: impl Into<String>) -> Self {
+	pub fn new_from_name(name: &str) -> Self {
 		todo!()
 	}
 
@@ -113,7 +113,11 @@ impl Element {
 		todo!()
 	}
 
-	pub fn namespace(&self) -> Option<String> {
+	pub fn new_with_attributes_and_children(name: &str, attributes: HashMap<&str, &str>, children: &[&dyn Node]) -> Self {todo!()}
+
+	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
+
+	pub fn namespace(&self) -> Option<Uri> {
 		todo!()
 	}
 
@@ -197,6 +201,10 @@ impl Element {
 	pub fn append(&mut self, node: impl Node) {
 		todo!()
 		// TODO: if this is an element, set the namespace context
+	}
+
+	pub fn append_all(&mut self, children: &[&dyn Node]) {
+		todo!()
 	}
 
 	pub fn insert(&mut self, index: usize, node: impl Node) {

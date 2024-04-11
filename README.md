@@ -11,7 +11,7 @@ KISS-XML provides the basics for XML documents, including:
 * Parse XML files and strings to a DOM
 * XML elements, text, and comments
 * DOM is mutable and can be saved as a string and to files
-* Namespace support
+* XML namespaces (with and without prefixes)
 * Easy to use
 
 ## What's NOT included:
@@ -106,7 +106,7 @@ fn main() {
 }
 ```
 
-For more details, see the [documentation](https://docs.rs/kiss-xml/).
+For more details and examples, see the [documentation](https://docs.rs/kiss-xml/).
 
 ## License
 This library is open source, licensed under the MIT License. You may use it
