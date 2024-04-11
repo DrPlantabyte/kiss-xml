@@ -20,6 +20,7 @@ http = "1.0"
 
 [dev-dependencies]
 tempfile = "3" # used for testing file I/O in API and unit tests
+chrono = "0.4" # used in some exaples
 
 [build-dependencies]
 # no build dependencies

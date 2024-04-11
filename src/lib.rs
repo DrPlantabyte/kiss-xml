@@ -37,9 +37,10 @@ your needs. Try another XML parsing crate instead.
 To parse an XML file, all you need to do is call the `kiss_xml::parse_filepath(...)` function, and you can convert it to a string with the `to_string()` method or write it to a file with `.write_to_filepath(...)`.
 
 ```rust
-fn main() {
-	let doc = kiss_xml::parse_filepath("my-file.xml").unwrap();
-    println!("{}", doc.to_string());
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
+	let doc = kiss_xml::parse_filepath("my-file.xml")?;
+	println!("{}", doc.to_string());
+	Ok(())
 }
 ```
 
@@ -48,7 +49,7 @@ Parsed XML content will be converted into a Document Object Model (DOM) with a s
 
 For example:
 ```rust
-fn main() {
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -61,16 +62,16 @@ fn main() {
 <config>
 "#;
 	// parse XML to a document object model (DOM)
-	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");
+	let dom = kiss_xml::parse_str(xml)?;
 	// print all sound properties
 	let properties = dom.root_element()
-		.first_element_by_name("sound").expect("No <sound> element")
+		.first_element_by_name("sound")?
 		.elements_by_name("property");
 	for prop in properties {
 		println!(
 			"{} = {}",
-			prop.get_attr("name").expect("missing name attribute"),
-			prop.get_attr("value").expect("missing value attribute")
+			prop.get_attr("name")?,
+			prop.get_attr("value")?
 		);
 	}
 	// print children of the root element
@@ -81,6 +82,7 @@ fn main() {
 	for e in dom.root_element().search_elements(|_| true) {
 		println!("found element <{}>", e.name())
 	}
+	Ok(())
 }
 ```
 
@@ -89,7 +91,7 @@ To modify the DOM, use the `.*_mut(...)` methods to get mutable references to th
 
 For example:
 ```rust
-fn main() {
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	// make a DOM from scratch
@@ -99,13 +101,14 @@ fn main() {
 	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John"));
 	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name"));
 	// remove element by index
-	let _removed_element = doc.root_element_mut().remove_element(3).unwrap();
+	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
-	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text().unwrap() == "Jimmy John");
+	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text()? == "Jimmy John");
 	// print first element content
-	println!("First politician: {}", doc.root_element().elements_by_name("person").text().unwrap());
+	println!("First politician: {}", doc.root_element().elements_by_name("person").text()?);
 	// write to file
 	doc.write_to_filepath("politics.xml");
+	Ok(())
 }
 ```
 
@@ -113,21 +116,21 @@ fn main() {
 The XML DOM is made up of Node objects (trait objects implementing trait kiss_xml::dom::Node). The following example shows how to add and remove text and comment nodes in addition to element nodes.
 
 ```rust
-fn main(){
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
 	<!-- this is a comment ->
 	<body>
-		TODO: content here
+		Content goes here
 	</body>
 </html>"#
-	).unwrap();
+	)?;
 	// read and remove the first comment
 	let first_comment = doc.root_element().children()
 		.filter(|n| n.is_comment())
-		.collect::<Vec<_>>().first().unwrap();
-	println!("Comment: {}", first_comment.text().unwrap());
+		.collect::<Vec<_>>().first()?;
+	println!("Comment: {}", first_comment.text()?);
 	doc.root_element_mut().remove_all(|n| n.is_comment());
 	// replace content of <body> with some HTML
 	doc.root_element_mut().first_element_by_name_mut("body").remove_all(|_| true);
@@ -160,7 +163,7 @@ as-is or with modification, without any limitations.
 use std::io::Read;
 use std::path::Path;
 
-mod errors;
+pub mod errors;
 pub mod dom;
 use dom::Node;
 

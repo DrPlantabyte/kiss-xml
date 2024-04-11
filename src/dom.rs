@@ -8,14 +8,33 @@ A document object model (DOM) is a tree data structure with three different kind
 
 ## Parse an XML file, modify it, then print it to the terminal
 ```rust
-fn main() {
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::Element;
-	let mut doc = kiss_xml::parse_filepath("some-file.xml").unwrap();
+	let mut doc = kiss_xml::parse_filepath("some-file.xml")?;
 	doc.root_element_mut().append(Element::new_with_text("note", "note text"));
-	println!("{}", doc.to_string_with_indent("    "));
+	println!("{}", doc.to_string_with_indent("\t"));
+	Ok(())
 }
 ```
+
+## Create a new DOM from scratch
+```rust
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	use chrono::{DateTime, Utc};
+	let mut doc = Document::new(
+		Element::new_with_children("root", &[
+			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339())),
+			Element::new_with_text("motd", "Message of the day is: hello!")
+		])
+	);
+	println!("{}", doc.to_string_with_indent("\t"));
+	Ok(())
+}
+```
+
 */
 
 use std::cmp::Ordering;
@@ -35,16 +54,40 @@ pub struct Document {
 }
 
 impl Document {
-
+	/**
+Constructs a new Document with the given root element and default declaration
+	 */
 	pub fn new(root: Element) -> Self {
 		todo!()
 	}
-
+	/**
+Full constructor with required root element and optional XML declaration and optional list of one or more document type definition (DTD) items.
+	 */
+	pub fn new_with_decl_dtd(root: Element, declaration: Option<Declaration>, dtd: Option<&[DTD]>) -> Self {
+		todo!()
+	}
+	/**
+Returns a list of any and all DTDs for this Document as an iterator
+	 */
 	pub fn doctype_defs(&self) -> Iter<DTD> {
 		todo!()
 	}
-
+	/**
+Sets the DTDs for this document (a `None` argument will remove all DTDs)
+	 */
+	pub fn set_doctype_defs(&mut self, dtds: Option<&[DTD]>) {
+		todo!()
+	}
+	/**
+Gets the XML declaration for this document, if it has one (while the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file).
+	 */
 	pub fn declaration(&self) -> Option<&Declaration> {
+		todo!()
+	}
+	/**
+Sets the CML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
+	 */
+	pub fn set_declaration(&mut self, decl: Declaration) {
 		todo!()
 	}
 
