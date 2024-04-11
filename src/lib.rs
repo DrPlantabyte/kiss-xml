@@ -151,12 +151,9 @@ r#"<html>
 }
 ```
 
-
 # License
 This library is open source, licensed under the MIT License. You may use it
 as-is or with modification, without any limitations.
-
-
 
  */
 
@@ -187,21 +184,28 @@ pub fn escape(text: impl Into<String>) -> String {
 }
 
 /// Reverses any escaped characters (&, <, >, ', and ") in XML-compatible text
-/// to regenerate the original test, eg replacing "&amp;" with "&" and "&lt;"
+/// to regenerate the original text, eg replacing "&amp;" with "&" and "&lt;"
 /// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
 	todo!()
 }
 
-/// Reads the file from the given filepath and parses it as an XML document
+/** Reads the file from the given filepath and parses it as an XML document
+*/
 pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }
 
+/** Reads the XML content from the given stream reader and parses it as an
+XML document
+ */
 pub fn parse_stream(reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }
 
-pub fn parse_str(xml_string: &str) -> Result<dom::Document, errors::KissXmlError> {
+
+/** Reads the XML content from the text string and parses it as an XML document
+ */
+pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors::KissXmlError> {
 	todo!()
 }

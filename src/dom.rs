@@ -1,16 +1,35 @@
 #![deny(unused_must_use)]
 #![deny(missing_docs)]
 
+/*!
+A document object model (DOM) is a tree data structure with three different kinds of nodes: Element, Text, and Comment nodes. Element nodes can have children (a list of child nodes), while Text and Comment nodes cannot. As per the XML specification, a DOM can only have one root element.
+
+# Examples
+
+## Parse an XML file, modify it, then print it to the terminal
+```rust
+fn main() {
+	use kiss_xml;
+	use kiss_xml::dom::Element;
+	let mut doc = kiss_xml::parse_filepath("some-file.xml").unwrap();
+	doc.root_element_mut().append(Element::new_with_text("note", "note text"));
+	println!("{}", doc.to_string_with_indent("    "));
+}
+```
+*/
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::path::Path;
 use std::slice::Iter;
 use http::Uri;
 
+/**
+A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
+*/
 pub struct Document {
 	// TODO
 }
