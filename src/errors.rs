@@ -54,3 +54,30 @@ impl Display for ParsingError {
 }
 
 impl std::error::Error for ParsingError{}
+
+/// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
+#[derive(Clone, Debug)]
+pub struct TypeCastError {
+	/// The error message.
+	pub msg: String
+}
+
+impl TypeCastError{
+	/// New error with a given message
+	pub fn new(msg: impl Into<String>) -> Self {
+		Self{msg: msg.into()}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", &self.msg)
+	}
+}
+
+impl Display for TypeCastError {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "TypeCastError: {}", self.msg)
+	}
+}
+
+impl std::error::Error for TypeCastError{}
+

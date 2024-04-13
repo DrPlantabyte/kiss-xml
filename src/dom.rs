@@ -85,35 +85,64 @@ Gets the XML declaration for this document, if it has one (while the XML spec re
 		todo!()
 	}
 	/**
-Sets the CML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
+Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
 	 */
 	pub fn set_declaration(&mut self, decl: Declaration) {
 		todo!()
 	}
 
+	/**
+Produces the XML text representing this XML DOM using the default indent of two spaces per level
+	 */
 	pub fn to_string(&self) -> String {
 		self.to_string_with_indent("  ")
 	}
 
+	/**
+	Produces the XML text representing this XML DOM using the provided indent
+	 */
 	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
 		todo!()
 	}
 
+	/**
+	Writes this document as XML to the given file using the default indent of two spaces per level, returning a result indicating success or error in this write operation
+	*/
 	pub fn write_to_filepath(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
 		self.write_to_filepath_with_indent(path, "  ")
 	}
+
+	/**
+	Writes this document as XML to the given file using the provided indent, returning a result indicating success or error in this write operation
+	 */
 	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
 		todo!()
 	}
+
+	/**
+	Writes this document as XML to the given file using the default indent of two spaces per level, returning a result indicating success or error in this write operation
+	 */
 	pub fn write_to_file(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
 		self.write_to_file_with_indent(file, "  ")
 	}
+
+	/**
+	Writes this document as XML to the given file using the default indent of two spaces per level, returning a result indicating success or error in this write operation
+	 */
 	pub fn write_to_file_with_indent(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
 		todo!()
 	}
+
+	/**
+	Returns the root element of this DOM as an immutable reference
+	 */
 	pub fn root_element(&self) -> &Element {
 		todo!()
 	}
+
+	/**
+	Returns the root element of this DOM as a mutable reference.
+	  */
 	pub fn root_element_mut(&mut self) -> &mut Element {
 		todo!()
 	}
@@ -137,9 +166,15 @@ impl PartialEq<Self> for Document {
 	}
 }
 
+/**
+A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but only Elements can be branch nodes with children of their own.
+ */
 pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 
-	fn name(&self) -> String;
+	/**
+If this node is an Element, this returns the tag name of the element (eg "author" for XML element `<author />`). Otherwise, this returns None.
+	 */
+	fn name(&self) -> Option<String>;
 
 	fn text(&self) -> Option<String>;
 
@@ -148,6 +183,8 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 	fn is_text(&self) -> bool;
 
 	fn is_comment(&self) -> bool;
+
+	fn as_element(&self) -> Result<>
 }
 
 #[derive(Clone)]
