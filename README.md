@@ -11,10 +11,10 @@ KISS-XML provides the basics for XML documents, including:
 * Parse XML files and strings to a DOM
 * XML elements, text, and comments
 * DOM is mutable and can be saved as a string and to files
+* XML namespaces (with and without prefixes)
 * Easy to use
 
 ## What's NOT included:
-* Namespace support
 * Schema handling
 * CDATA
 * Document type declarations (DTDs will be preserved but not interpreted)
@@ -98,10 +98,15 @@ fn main() {
 	let mut doc = Document::new(Element::new("politicians"));
 	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton"));
 	doc.root_element_mut().append(Element::new_with_text("person", "Bob Dole"));
+	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John"));
+	// remove element(s) by use of a predicate function
+	doc.root_element_mut().remove_elements(|e| e.text().unwrap() == "Jimmy John");
 	// write to file
 	doc.write_to_filepath("politics.xml");
 }
 ```
+
+For more details and examples, see the [documentation](https://docs.rs/kiss-xml/).
 
 ## License
 This library is open source, licensed under the MIT License. You may use it

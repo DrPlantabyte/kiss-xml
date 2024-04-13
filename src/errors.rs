@@ -1,19 +1,26 @@
 #![deny(unused_must_use)]
 #![deny(missing_docs)]
-use std::error::Error;
+
+/*!
+The kiss_xml::error module holds an enum of possible error types, each of which
+has a corresponding implementation struct.
+*/
+
 use std::fmt::{Debug, Display, Formatter};
 
 /// Represents an error that occurs during parsing or processing of XML
 #[derive(Debug)]
 pub enum KissXmlError {
+	/// This error indicates that there was a problem with the XML syntax or logic
 	ParsingError(ParsingError),
+	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
 
 impl Display for KissXmlError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {
-			KissXmlError::ParsingError(e) => write!(f, "ParsingError: {}", e.msg),
+			KissXmlError::ParsingError(e) => write!(f, "{}", e),
 			KissXmlError::IOError(e) => Display::fmt(&e, f)
 		}
 	}
@@ -39,3 +46,11 @@ impl ParsingError{
 		write!(f, "{}", &self.msg)
 	}
 }
+
+impl Display for ParsingError {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "ParsingError: {}", self.msg)
+	}
+}
+
+impl std::error::Error for ParsingError{}
