@@ -45,6 +45,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::Iter;
 use http::Uri;
+use crate::errors::KissXmlError;
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -172,42 +173,158 @@ A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but
 pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 
 	/**
-If this node is an Element, this returns the tag name of the element (eg "author" for XML element `<author />`). Otherwise, this returns None.
+If this node is an Element, this returns the tag name of the element (eg "author" for XML element `<author />`). Otherwise, this returns `None`.
 	 */
 	fn name(&self) -> Option<String>;
 
+	/**
+	Returns the text content of the code. For a Comment or Text node, this is just the comment or text string. For an Element, this will return *all* text (including from child elements, recursive scan) as a single string, or `None` if this element has no child text nodes
+	 */
 	fn text(&self) -> Option<String>;
 
+	/**
+	Returns `true` if this Node trait object is an Element struct, otherwise `false`
+	 */
 	fn is_element(&self) -> bool;
 
+	/**
+	Returns `true` if this Node trait object is a Text struct, otherwise `false`
+	 */
 	fn is_text(&self) -> bool;
 
+	/**
+	Returns `true` if this Node trait object is a Comment struct, otherwise `false`
+	 */
 	fn is_comment(&self) -> bool;
 
-	fn as_element(&self) -> Result<>
+	/**
+	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_element(&self) -> Result<&Element, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_comment(&self) -> Result<&Comment, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_text(&self) -> Result<&Text, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_element_mut(&mut self) -> Result<&mut Element, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
+	 */
+	fn as_text_mut(&mut self) -> Result<&mut Text, KissXmlError::TypeCastError> {
+		todo!()
+	}
+
+	/**
+	Casts this struct to a Node trait object
+	 */
+	fn as_node(&self) -> &dyn Node {
+		self
+	}
+
+	/**
+	Casts this struct to a Node trait object
+	 */
+	fn as_node_mut(&mut self) -> &mut dyn Node {
+		self
+	}
+
+	/**
+	Writes this Node to a string with the provided indent (used to serialize to XML)
+	 */
+	fn as_string_with_indent(&self, indent: &str) -> String;
+
+	/**
+	Writes this Node to a string with the default indent of two spaces per level (used to serialize to XML)
+	 */
+	fn as_string(&self) -> String {
+		self.as_string_with_indent("  ")
+	}
 }
 
+/// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
 #[derive(Clone)]
 pub struct Element {
 	// TODO
 }
 
 impl Element {
-
+	/**
+	Creates a new Element
+	# Args:
+	* *name*: Element name for this XML element (ie "body" for `<body>some text</body>`)
+	* *text*: Optional text content for this element (ie "some text" for `<body>some text</body>`)
+	* *attributes*: optional HashMap of attributes
+	* *xmlns*: optional namespace for this element
+	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
+	* *children*: optional list of child nodes to add to this element
+	 */
 	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<&str, &str>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option(&[&dyn Node])) -> Self {todo!()}
-
+	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
 		todo!()
 	}
-
+	/** Creates a new Element with the specified name and attributes.
+	# Example
+	```rust
+	fn main() {
+		use kiss_xml::dom::*;
+		use std::collections::HashMap;
+		let e = Element::new_with_attributes("b", HashMap::from(&[
+			("style", "color: blue")
+		]));
+		println!("{}", e) // prints `<b style="color: blue"/>`
+	}
+	```
+	 */
 	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
 		todo!()
 	}
-
+	/// Creates a new Element with the specified name and text content
 	pub fn new_with_text(name: &str, text: &str) -> Self {
 		todo!()
 	}
-
+	/** Creates a new Element with the specified name, attributes, and text.
+	# Example
+	```rust
+	fn main() {
+		use kiss_xml::dom::*;
+		use std::collections::HashMap;
+		let e = Element::new_with_attributes(
+			"b",
+			HashMap::from(&[
+				("style", "color: blue")
+			]),
+			"goose"
+		);
+		println!("{}", e) // prints `<b style="color: blue">goose</b>`
+	}
+	```
+	 */
 	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<&str, &str>, text: &str) -> Self {
 		todo!()
 	}

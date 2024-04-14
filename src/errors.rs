@@ -13,6 +13,9 @@ use std::fmt::{Debug, Display, Formatter};
 pub enum KissXmlError {
 	/// This error indicates that there was a problem with the XML syntax or logic
 	ParsingError(ParsingError),
+	/// This error indicates an attempt at an invalid conversion from one type
+	/// of Node to another (eg trying to cast an Elemnent to a Comment)
+	TypeCastError(TypeCastError),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
@@ -21,6 +24,7 @@ impl Display for KissXmlError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {
 			KissXmlError::ParsingError(e) => write!(f, "{}", e),
+			KissXmlError::TypeCastError(e) => write!(f, "{}", e),
 			KissXmlError::IOError(e) => Display::fmt(&e, f)
 		}
 	}
