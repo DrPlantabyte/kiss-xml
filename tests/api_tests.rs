@@ -260,7 +260,7 @@ fn test_remove_3(){
 		.first_element_by_name_mut("properties").unwrap()
 		.remove_elements_by_name("property");
 	doc.root_element_mut()
-		.remove_all(|n| n.is_comment() || (n.is_element() && n.name() == "other"));
+		.remove_all(|n| n.is_comment() || (n.is_element() && n.name().unwrap() == "other"));
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
@@ -349,7 +349,7 @@ fn test_namespaces_1() {
 	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly inherited");
 	// check that adding a new element inherits the namespace of the parent unless otherwise specified
-	doc.root_element_mut().append(Element::new("depth", Some("50"), None, None, None));
+	doc.root_element_mut().append(Element::new("depth", Some("50"), None, None, None, None));
 	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly inherited");
 	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
 }

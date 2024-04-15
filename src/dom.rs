@@ -283,7 +283,7 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<&str, &str>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option(&[&dyn Node])) -> Self {todo!()}
+	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<impl Into<String>, impl Into<String>>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option(&[&dyn Node])) -> Self {todo!()}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
 		todo!()
@@ -301,7 +301,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes(name: &str, attributes: HashMap<&str, &str>) -> Self {
+	pub fn new_with_attributes(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>) -> Self {
 		todo!()
 	}
 	/// Creates a new Element with the specified name and text content
@@ -314,7 +314,7 @@ impl Element {
 	fn main() {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes(
+		let e = Element::new_with_attributes_and_text(
 			"b",
 			HashMap::from(&[
 				("style", "color: blue")
@@ -325,12 +325,54 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<&str, &str>, text: &str) -> Self {
+	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>, text: &str) -> Self {
 		todo!()
 	}
+	/**
+	Creates a new Element with the specified name, attributes, and children.
+	# Example
+	```rust
+	fn main() {
+		use kiss_xml::dom::*;
+		use std::collections::HashMap;
+		let e = Element::new_with_attributes_and_children(
+			"contact",
+			HashMap::from(&[
+				("id", "123")
+			]),
+			&[&Element::new_with_text("name", "Billy Bob")]
+		);
+		println!("{}", e)
+		/* prints:
+			<contact id="123">
+				<name>Billy Bob</name>
+			</contact>
+		*/
+	}
+	```
+	 */
+	pub fn new_with_attributes_and_children(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>, children: &[&dyn Node]) -> Self {todo!()}
 
-	pub fn new_with_attributes_and_children(name: &str, attributes: HashMap<&str, &str>, children: &[&dyn Node]) -> Self {todo!()}
-
+	/**
+	Creates a new Element with the specified name and children.
+	# Example
+	```rust
+	fn main() {
+		use kiss_xml::dom::*;
+		use std::collections::HashMap;
+		let e = Element::new_with_children(
+			"contact",
+			&[&Element::new_with_text("name", "Billy Bob")]
+		);
+		println!("{}", e)
+		/* prints:
+			<contact>
+				<name>Billy Bob</name>
+			</contact>
+		*/
+	}
+	```
+	 */
 	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
 
 	pub fn namespace(&self) -> Option<Uri> {
@@ -373,7 +415,7 @@ impl Element {
 		todo!()
 	}
 
-	pub fn attributes(&self) -> &HashMap<&str, &str> {
+	pub fn attributes(&self) -> &HashMap<impl Into<String>, impl Into<String>> {
 		todo!()
 	}
 
