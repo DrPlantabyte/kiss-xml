@@ -383,6 +383,7 @@ fn test_namespaces_3() {
 fn test_modify_text_and_comments() {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
 	<!-- this is a comment ->
@@ -432,24 +433,42 @@ fn test_mutable_iterators_1() {
 		if e.name() == "to" {e.set_text("Jim")}
 	}
 	for n in root.children_mut() {
-		if n.is_comment() {n.as_comment_mut().set_text("dog")}
+		if n.is_comment() {n.as_comment_mut().unwrap().content = "dog".into()}
 	}
 	for e in root.elements_by_name_mut("heading"){
-		todo!()
+		e.set_text("To-Do")
+	}
+	for n in root.search_mut(|n| n.is_element() && n.as_element().unwrap().name() == "b") {
+		n.as_element_mut().unwrap().set_text("them")
+	}
+	for e in root.search_elements_mut(|e| e.text().is_some() && e.text().unwrap().contains(" - Jani")){
+		e.set_attr("p", "2")
+	}
+	for e in root.search_elements_by_name_mut("b") {
+		e.set_attr("class", "bold")
+	}
+	for t in root.search_text_mut(|t| t.text().unwrap().contains("Don't")) {
+		t.content = t.content.replace("Don't", "Do")
+	}
+	root.first_element_by_name_mut("to").unwrap().append(Comment::new("or did he prefer to be called James?"));
+	for c in root.search_comments_mut(|c| c.content.contains("James")) {
+		c.content = c.content.replace("James", "Jimmy")
 	}
 
-	todo!();
 	assert_eq!(
 		doc.to_string_with_indent("\t"),
 		r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE chicken >
 <note>
 	<!--dog-->
-	<to>Jim</to>
+	<to>
+		Jim
+		<!--or did he prefer to be called Jimmy?-->
+	</to>
 	<from>Jani</from>
-	<heading>Reminder</heading>
-	<paragraph>Don't forget <b>me</b> this weekend!</paragraph>
-	<paragraph> - Jani</paragraph>
+	<heading>To-Do</heading>
+	<paragraph>Do forget <b class="bold">them</b> this weekend!</paragraph>
+	<paragraph p="2"> - Jani</paragraph>
 	<footer>&writer;&nbsp;&copyright;</footer>
 	<signed signer="Jani Jane"/>
 </note>

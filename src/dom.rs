@@ -698,10 +698,6 @@ impl Comment {
 	pub fn new(comment: impl Into<String>) -> Self {
 		todo!()
 	}
-
-	pub fn set_text(&mut self, comment: impl Into<String>) {
-		todo!()
-	}
 }
 
 impl Node for Comment{
