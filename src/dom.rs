@@ -43,7 +43,7 @@ use std::fmt::Formatter;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 use http::Uri;
 use crate::errors::KissXmlError;
 
@@ -68,9 +68,15 @@ Full constructor with required root element and optional XML declaration and opt
 		todo!()
 	}
 	/**
-Returns a list of any and all DTDs for this Document as an iterator
+	Returns a list of any and all DTDs for this Document as an iterator
 	 */
 	pub fn doctype_defs(&self) -> Iter<DTD> {
+		todo!()
+	}
+	/**
+	Returns a list of any and all DTDs for this Document as an iterator
+	 */
+	pub fn doctype_defs_mut(&mut self) -> IterMut<DTD> {
 		todo!()
 	}
 	/**
@@ -374,11 +380,21 @@ impl Element {
 	```
 	 */
 	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
-
+	/**
+	Returns the namespace of this element, or `None` if it does not have a namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
+	 */
 	pub fn namespace(&self) -> Option<Uri> {
 		todo!()
 	}
-
+	/**
+	Returns the default namespace of this element, or `None` if it does not have a default namespace. Default namespaces do not use prefixes and are inherited by the element's children.
+	 */
+	pub fn default_namespace(&self) -> Option<Uri> {
+		todo!()
+	}
+	/**
+	Returns the prefix of this element's namespace, if it has a prefixed namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
+	 */
 	pub fn namespace_prefix(&self) -> Option<String> {
 		todo!()
 	}
@@ -387,7 +403,14 @@ impl Element {
 		todo!()
 	}
 
-	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> Iter<Element>{
+	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&Uri>) -> IterMut<Element>{
+		todo!()
+	}
+
+	pub fn elements_by_namespace_prefix(&mut self, prefix: Option<&str>) -> Iter<Element>{
+		todo!()
+	}
+	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> IterMut<Element>{
 		todo!()
 	}
 
@@ -399,9 +422,22 @@ impl Element {
 		todo!()
 	}
 
-	pub fn children(&self) -> Iter<Box<dyn Node>>{
+	pub fn child_elements_mut(&mut self) -> IterMut<Element>{
 		todo!()
 	}
+
+	pub fn children(&self) -> Iter<&dyn Node>{
+		todo!()
+	}
+
+	pub fn children_mut(&mut self) -> IterMut<&dyn Node>{
+		todo!()
+	}
+
+	/** Deletes all child nodes from this element */
+	pub fn clear_children(&mut self) {todo!()}
+	/** Replaces this element's content (children) with the given text */
+	pub fn set_text(&mut self, text: impl Into<String>) {todo!()}
 
 	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
 		todo!()
@@ -412,6 +448,10 @@ impl Element {
 	}
 
 	pub fn elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
+		todo!()
+	}
+
+	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
 		todo!()
 	}
 
@@ -431,7 +471,15 @@ impl Element {
 		todo!()
 	}
 
-	pub fn search<P>(&self, predicate: P) -> Iter<Box<dyn Node>> where P: FnMut(&Box<dyn Node>) -> bool {
+	/** Deletes all attributes from this element */
+	pub fn clear_attributes(&mut self) {todo!()}
+
+	pub fn search<P>(&self, predicate: P) -> Iter<&dyn Node> where P: FnMut(&dyn Node) -> bool {
+		// recursive
+		todo!()
+	}
+
+	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<&dyn Node> where P: FnMut(&mut dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
@@ -441,7 +489,17 @@ impl Element {
 		todo!()
 	}
 
+	pub fn search_elements_mut<P>(&mut self, predicate: P) -> IterMut<Element> where P: FnMut(&Element) -> bool {
+		// recursive
+		todo!()
+	}
+
 	pub fn search_elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
+		// recursive
+		todo!()
+	}
+
+	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
 		// recursive
 		todo!()
 	}
@@ -451,7 +509,17 @@ impl Element {
 		todo!()
 	}
 
+	pub fn search_text_mut<P>(&mut self, predicate: P) -> IterMut<Text> where P: FnMut(&Text) -> bool {
+		// recursive
+		todo!()
+	}
+
 	pub fn search_comments<P>(&self, predicate: P) -> Iter<Comment> where P: FnMut(&Comment) -> bool {
+		// recursive
+		todo!()
+	}
+
+	pub fn search_comments_mut<P>(&mut self, predicate: P) -> IterMut<Comment> where P: FnMut(&Comment) -> bool {
 		// recursive
 		todo!()
 	}
@@ -631,6 +699,9 @@ impl Comment {
 		todo!()
 	}
 
+	pub fn set_text(&mut self, comment: impl Into<String>) {
+		todo!()
+	}
 }
 
 impl Node for Comment{
@@ -705,4 +776,11 @@ impl std::fmt::Display for DTD {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		todo!()
 	}
+}
+
+impl DTD {
+	pub fn from_string(text: impl Into<String>) -> DTD {todo!()}
+	pub fn to_string(&self) -> String {todo!()}
+	pub fn clear(&mut self) -> String {todo!()}
+	pub fn set_name(&mut self, name: impl Into<String>) {todo!()}
 }

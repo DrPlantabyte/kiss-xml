@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-use kiss_xml::dom::{Comment, Element, Node, Text};
 
 #[test]
 fn test_xml_escapes() {
@@ -230,6 +228,7 @@ fn test_remove_1(){
 #[test]
 fn test_remove_2(){
 	use kiss_xml;
+	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
@@ -341,6 +340,7 @@ fn test_namespaces_1() {
 	use http::Uri;
 	use std::str::FromStr;
 	use kiss_xml;
+	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
 	// check that namespaces were correctly parsed (no prefix)
 	assert_eq!(doc.root_element().namespace().unwrap(), Uri::from_str("internal://ns/a").unrwap(), "XML namespace not correctly parsed");
@@ -382,6 +382,7 @@ fn test_namespaces_3() {
 #[test]
 fn test_modify_text_and_comments() {
 	use kiss_xml;
+	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
 	<!-- this is a comment ->
@@ -415,4 +416,77 @@ r#"<html>
 	);
 	// print the results
 	println!("{}", doc.to_string());
+}
+
+#[test]
+fn test_mutable_iterators_1() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	let mut doc = kiss_xml::parse_str(sample_xml_1()).unwrap();
+	for dtd in doc.doctype_defs_mut() {
+		dtd.clear();
+		dtd.set_name("chicken")
+	}
+	let mut root = doc.root_element_mut();
+	for e in root.child_elements_mut() {
+		if e.name() == "to" {e.set_text("Jim")}
+	}
+	for n in root.children_mut() {
+		if n.is_comment() {n.as_comment_mut().set_text("dog")}
+	}
+	for e in root.elements_by_name_mut("heading"){
+		todo!()
+	}
+
+	todo!();
+	assert_eq!(
+		doc.to_string_with_indent("\t"),
+		r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chicken >
+<note>
+	<!--dog-->
+	<to>Jim</to>
+	<from>Jani</from>
+	<heading>Reminder</heading>
+	<paragraph>Don't forget <b>me</b> this weekend!</paragraph>
+	<paragraph> - Jani</paragraph>
+	<footer>&writer;&nbsp;&copyright;</footer>
+	<signed signer="Jani Jane"/>
+</note>
+"#,
+		"Incorrect mutation of XML DOM"
+	);
+
+}
+
+#[test]
+fn test_mutable_iterators_2() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	use http::Uri;
+	use std::str::FromStr;
+	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
+	let mut root = doc.root_element_mut();
+	for e in root.elements_by_namespace_mut(None) {
+		e.set_text("22");
+	}
+	for e in root.elements_by_namespace_mut(Some(&Uri::from_str("internal://ns/b").unwrap())) {
+		e.set_text("66");
+	}
+	for e in root.elements_by_namespace_prefix_mut(Some("img")) {
+		e.set_text("44");
+	}
+	assert_eq!(
+		doc.to_string_with_indent("\t"),
+		r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>22</width>
+	<height>22</height>
+	<depth>22</depth>
+	<img:width>44</img:width>
+	<img:height>44</img:height>
+	<dim:width>66</dim:width>
+</root>"#,
+		"Incorrect mutation of XML DOM"
+	);
 }
