@@ -399,6 +399,35 @@ impl Element {
 		todo!()
 	}
 
+	/**
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use http::Uri;
+		use std::str::FromStr;
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let doc = kiss_xml::parse_str(r#"<?xml version="1.0" encoding="UTF-8"?>
+	<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+		<width>200</width>
+		<height>150</height>
+		<depth>50</depth>
+		<img:width>200</img:width>
+		<img:height>150</img:height>
+		<dim:width>200</dim:width>
+	</root>"#)?;
+		for e in doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a")?)){
+			println!("img element <{}> contains '{}'", e.name(), e.text())
+		}
+		/* Prints:
+		img element <width> contains '200'
+		img element <height> contains '150'
+		*/
+		Ok(())
+	}
+	```
+	 */
 	pub fn elements_by_namespace(&self, namespace: Option<&Uri>) -> Iter<Element>{
 		todo!()
 	}
