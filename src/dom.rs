@@ -400,7 +400,9 @@ impl Element {
 	}
 
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+
+	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -431,47 +433,180 @@ impl Element {
 	pub fn elements_by_namespace(&self, namespace: Option<&Uri>) -> Iter<Element>{
 		todo!()
 	}
+	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
 
+	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use http::Uri;
+		use std::str::FromStr;
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut doc = kiss_xml::parse_str(r#"<?xml version="1.0" encoding="UTF-8"?>
+	<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+		<width>200</width>
+		<height>150</height>
+		<depth>50</depth>
+		<img:width>200</img:width>
+		<img:height>150</img:height>
+		<dim:width>200</dim:width>
+	</root>"#)?;
+		for e in doc.root_element().elements_by_namespace_mut(Some(&Uri::from_str("internal://ns/a")?)){
+			e.set_text("0");
+		}
+		for e in doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a")?)){
+			println!("img element <{}> contains '{}'", e.name(), e.text())
+		}
+		/* Prints:
+		img element <width> contains '0'
+		img element <height> contains '0'
+		*/
+		Ok(())
+	}
+	```
+	 */
 	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&Uri>) -> IterMut<Element>{
 		todo!()
 	}
+	/**
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
 
+	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use http::Uri;
+		use std::str::FromStr;
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let doc = kiss_xml::parse_str(r#"<?xml version="1.0" encoding="UTF-8"?>
+	<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+		<width>200</width>
+		<height>150</height>
+		<depth>50</depth>
+		<img:width>200</img:width>
+		<img:height>150</img:height>
+		<dim:width>200</dim:width>
+	</root>"#)?;
+		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
+			println!("img element <{}> contains '{}'", e.name(), e.text())
+		}
+		/* Prints:
+		img element <width> contains '200'
+		img element <height> contains '150'
+		*/
+		Ok(())
+	}
+	 */
 	pub fn elements_by_namespace_prefix(&mut self, prefix: Option<&str>) -> Iter<Element>{
 		todo!()
 	}
+	/**
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+
+	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use http::Uri;
+		use std::str::FromStr;
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut doc = kiss_xml::parse_str(r#"<?xml version="1.0" encoding="UTF-8"?>
+	<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+		<width>200</width>
+		<height>150</height>
+		<depth>50</depth>
+		<img:width>200</img:width>
+		<img:height>150</img:height>
+		<dim:width>200</dim:width>
+	</root>"#)?;
+		for e in doc.root_element().elements_by_namespace_prefix_mut(Some("img")){
+			e.set_text("-1")
+		}
+		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
+			println!("img element <{}> contains '{}'", e.name(), e.text())
+		}
+		/* Prints:
+		img element <width> contains '-1'
+		img element <height> contains '-1'
+		*/
+		Ok(())
+	}
+	 */
 	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> IterMut<Element>{
 		todo!()
 	}
-
-	fn namespace_prefixes(&self) -> &Option<HashMap<String, String>> {todo!()}
-
-	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
-
+	/** Gets any and all xmlns prefixes defined in this element */
+	fn namespace_prefixes(&self) -> &Option<HashMap<String, Uri>> {todo!()}
+	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
+	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, Uri>>) { todo!()}
+	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) -> Iter<Element>{
 		todo!()
 	}
-
+	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements_mut(&mut self) -> IterMut<Element>{
 		todo!()
 	}
-
+	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children(&self) -> Iter<&dyn Node>{
 		todo!()
 	}
-
+	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children_mut(&mut self) -> IterMut<&dyn Node>{
 		todo!()
 	}
 
 	/** Deletes all child nodes from this element */
 	pub fn clear_children(&mut self) {todo!()}
-	/** Replaces this element's content (children) with the given text */
+	/** Replaces this element's content (children) with the given text. **This will delete any child elements and comments from this element!** */
 	pub fn set_text(&mut self, text: impl Into<String>) {todo!()}
+	/**
+	Gets the first child element with the given element name. If no such element exists, `None` is returned.
 
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::errors::DoesNotExistError;
+		let doc = kiss_xml::parse_str(r#"<body>
+		<p>Hello there!</p>
+		<p>Good-bye!</p>
+	</body>"#)?;
+		println!("1st <p>: {}",
+			doc.root_element()
+			.first_element_by_name("p").ok_or(Err(DoesNotExistError.default()))?
+		);
+		// prints: "1st <p>: Hello there!"
+		Ok(())
+	}
+	```
+	 */
 	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
 		todo!()
 	}
+	/**
+	Gets the first child element with the given element name as a mutable reference. If no such element exists, `None` is returned.
 
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::errors::DoesNotExistError;
+		let mut doc = kiss_xml::parse_str(r#"<body>
+		<p>Hello there!</p>
+	</body>"#)?;
+		doc.root_element_mut()
+			.first_element_by_name_mut("p").ok_or(Err(DoesNotExistError.default()))?
+			.set_text("Good bye!");
+		Ok(())
+	}
+	```
+	 */
 	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
 		todo!()
 	}

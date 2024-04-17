@@ -14,8 +14,10 @@ pub enum KissXmlError {
 	/// This error indicates that there was a problem with the XML syntax or logic
 	ParsingError(ParsingError),
 	/// This error indicates an attempt at an invalid conversion from one type
-	/// of Node to another (eg trying to cast an Elemnent to a Comment)
+	/// of Node to another (eg trying to cast an Element to a Comment)
 	TypeCastError(TypeCastError),
+	/// This error indicates that the user requested something that wasn't there
+	DoesNotExistError(DoesNotExistError),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
@@ -84,4 +86,37 @@ impl Display for TypeCastError {
 }
 
 impl std::error::Error for TypeCastError{}
+
+
+/// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
+#[derive(Clone, Debug)]
+pub struct DoesNotExistError {
+	/// The error message.
+	pub msg: String
+}
+
+impl DoesNotExistError{
+	/// New error with a given message
+	pub fn new(msg: impl Into<String>) -> Self {
+		Self{msg: msg.into()}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", &self.msg)
+	}
+}
+
+impl Display for DoesNotExistError {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "DoesNotExistError: {}", self.msg)
+	}
+}
+
+impl Default for DoesNotExistError {
+	fn default() -> Self {
+		Self{msg: String::from("requested item not found")}
+	}
+}
+
+impl std::error::Error for DoesNotExistError{}
 
