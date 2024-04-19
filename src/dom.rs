@@ -45,7 +45,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::{Iter, IterMut};
 use http::Uri;
-use crate::errors::{IndexOutOfBounds, KissXmlError};
+use crate::errors::{IndexOutOfBounds, KissXmlError, TypeCastError};
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -206,14 +206,14 @@ If this node is an Element, this returns the tag name of the element (eg "author
 	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
 	 */
-	fn as_element(&self) -> Result<&Element, KissXmlError::TypeCastError> {
+	fn as_element(&self) -> Result<&Element, TypeCastError> {
 		todo!()
 	}
 
 	/**
 	Casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(KissXmlError::TypeCastError)` error result is returned).
 	 */
-	fn as_comment(&self) -> Result<&Comment, KissXmlError::TypeCastError> {
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
 		todo!()
 	}
 
