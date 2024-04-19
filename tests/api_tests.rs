@@ -424,10 +424,6 @@ fn test_mutable_iterators_1() {
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_1()).unwrap();
-	for dtd in doc.doctype_defs_mut() {
-		dtd.clear();
-		dtd.set_name("chicken")
-	}
 	let mut root = doc.root_element_mut();
 	for e in root.child_elements_mut() {
 		if e.name() == "to" {e.set_text("Jim")}
@@ -458,7 +454,12 @@ fn test_mutable_iterators_1() {
 	assert_eq!(
 		doc.to_string_with_indent("\t"),
 		r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE chicken >
+<!DOCTYPE note [
+<!ENTITY ignore "kiss-xml ignores DOCTYPE stuff">
+<!ENTITY nbsp "&#xA0;">
+<!ENTITY writer "Writer: Donald Duck.">
+<!ENTITY copyright "Copyright: W3Schools.">
+]>
 <note>
 	<!--dog-->
 	<to>

@@ -45,7 +45,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::{Iter, IterMut};
 use http::Uri;
-use crate::errors::KissXmlError;
+use crate::errors::{IndexOutOfBounds, KissXmlError};
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -926,14 +926,14 @@ impl Element {
 	/**
 	Inserts the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an error result is returned.
 	 */
-	pub fn insert(&mut self, index: usize, node: impl Node) -> Result<(), kiss_xml::errors::IndexOutOfBounds> {
+	pub fn insert(&mut self, index: usize, node: impl Node) -> Result<(), IndexOutOfBounds> {
 		todo!()
 		// TODO: if this is an element, set the namespace context
 	}
 	/**
 	Removes the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an Err result is returned, otherwise the removed node is return as an Ok result.
 	 */
-	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, kiss_xml::errors::IndexOutOfBounds> {
+	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, IndexOutOfBounds> {
 		todo!()
 	}
 	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes. */
@@ -946,16 +946,20 @@ impl Element {
 		// recursive, returns count
 		todo!()
 	}
-
-	pub fn remove_element(&mut self, index: usize) -> Option<Element> {
+	/** Removes the Nth child element from this element, returning it as a result (or an `IndexOutOfBounds` error result if the index is out of range) */
+	pub fn remove_element(&mut self, index: usize) -> Result<Element, IndexOutOfBounds> {
 		todo!()
 	}
+	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
 	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: FnMut(&Element) -> bool {
 		// returns count
 		todo!()
 	}
+	/** Removes all child elements matching the given element name (regardless of namespace), returning the number of removed elements.
 
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
 	pub fn remove_elements_by_name(&mut self, name: impl Into<String>) -> usize {
 		// returns count
 		todo!()
@@ -981,6 +985,10 @@ impl Node for Element{
 	}
 
 	fn is_comment(&self) -> bool {
+		todo!()
+	}
+
+	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
 }
@@ -1016,18 +1024,33 @@ impl std::fmt::Debug for Element {
 	}
 }
 
+/// Represents a string of text in the XML DOM
 #[derive(Clone)]
 pub struct Text {
+	/// The content of this Text node
 	pub content: String
 }
 
 impl Text {
+	/** Construct a new Text node from the provided string-like object */
 	pub fn new(text: impl Into<String>) -> Self {
 		todo!()
 	}
 
 	pub fn name(&self) -> String {
 		todo!()
+	}
+}
+
+impl From<&str> for Text {
+	fn from(value: &str) -> Self {
+		Text::new(value)
+	}
+}
+
+impl From<String> for Text {
+	fn from(value: String) -> Self {
+		Text::new(value)
 	}
 }
 
@@ -1049,6 +1072,10 @@ impl Node for Text{
 	}
 
 	fn is_comment(&self) -> bool {
+		todo!()
+	}
+
+	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
 }
@@ -1084,12 +1111,15 @@ impl std::fmt::Debug for Text {
 	}
 }
 
+/// Represents an XML comment
 #[derive(Clone)]
 pub struct Comment{
+	/// The text of the comment
 	pub content: String
 }
 
 impl Comment {
+	/// Constructs a new Comment node from the given string-like object
 	pub fn new(comment: impl Into<String>) -> Self {
 		todo!()
 	}
@@ -1114,6 +1144,22 @@ impl Node for Comment{
 
 	fn is_comment(&self) -> bool {
 		todo!()
+	}
+
+	fn as_string_with_indent(&self, indent: &str) -> String {
+		todo!()
+	}
+}
+
+impl From<&str> for Comment {
+	fn from(value: &str) -> Self {
+		Comment::new(value)
+	}
+}
+
+impl From<String> for Comment {
+	fn from(value: String) -> Self {
+		Comment::new(value)
 	}
 }
 
@@ -1147,9 +1193,31 @@ impl std::fmt::Debug for Comment {
 	}
 }
 
+/** An XML document declaration, ie `<?xml version="1.0" encoding="UTF-8"?>`
+
+`kiss_xml` does not interpret XML document declarations and does not require XML documents to have one. The declaration will simply be copied verbatum. */
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct Declaration {
 	// TODO
+}
+
+impl Declaration {
+	/// Creates a new Declaration from the given string (eg `<?xml version="1.0" encoding="UTF-8"?>`)
+	pub fn from_str(decl: &str) -> Self {
+		todo!()
+	}
+	/// Serializes this Declaration as an XML declaration element string (eg ``<?xml version="1.0" encoding="UTF-8"?>`)
+	pub fn to_string(&self) -> String {todo!()}
+	/// Creates a new standard Declaration (UTF-8 encoded XML version 1)
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
+impl Default for Declaration {
+	fn default() -> Self {
+		Declaration::from_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#)
+	}
 }
 
 impl std::fmt::Display for Declaration {
@@ -1158,6 +1226,9 @@ impl std::fmt::Display for Declaration {
 	}
 }
 
+/**
+An XML document type declaration (DTD) defines custom behavior for XML documents, but `kiss_xml` does not support DTDs beyond copying them verbatum.
+*/
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct DTD {
 	// TODO
@@ -1170,8 +1241,8 @@ impl std::fmt::Display for DTD {
 }
 
 impl DTD {
+	/// Creates a new DTD from the given string (eg `<!DOCTYPE note []>)
 	pub fn from_string(text: impl Into<String>) -> DTD {todo!()}
+	/// Serializes this Declaration as an XML DTD string
 	pub fn to_string(&self) -> String {todo!()}
-	pub fn clear(&mut self) -> String {todo!()}
-	pub fn set_name(&mut self, name: impl Into<String>) {todo!()}
 }
