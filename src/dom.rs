@@ -846,50 +846,102 @@ impl Element {
 		// recursive
 		todo!()
 	}
-
+	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
 	pub fn search_text<P>(&self, predicate: P) -> Iter<Text> where P: FnMut(&Text) -> bool {
 		// recursive
 		todo!()
 	}
 
+	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
 	pub fn search_text_mut<P>(&mut self, predicate: P) -> IterMut<Text> where P: FnMut(&Text) -> bool {
 		// recursive
 		todo!()
 	}
-
+	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
 	pub fn search_comments<P>(&self, predicate: P) -> Iter<Comment> where P: FnMut(&Comment) -> bool {
 		// recursive
 		todo!()
 	}
-
+	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
 	pub fn search_comments_mut<P>(&mut self, predicate: P) -> IterMut<Comment> where P: FnMut(&Comment) -> bool {
 		// recursive
 		todo!()
 	}
+	/**
+	Appends the given node to the children of this element.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut doc = Document::new(Element::new_from_name("album"));
+		doc.root_element_mut().append(Element::new_with_text("song", "I Believe I Can Fly"));
+		println!("{}", doc);
+		/* prints:
+			<?xml version="1.0" encoding="UTF-8"?>
+			<album>
+				<song>I Believe I Can Fly</song>
+			</album>
+		*/
+		Ok(())
+	}
+	```
+	 */
 	pub fn append(&mut self, node: impl Node) {
 		todo!()
 		// TODO: if this is an element, set the namespace context
 	}
+	/**
+	Appends multiple child nodes to the current element.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut doc = Document::new(Element::new_from_name("album"));
+		doc.root_element_mut().append_all(&[
+			&Element::new_with_text("song", "I Believe I Can Fly"),
+			&Element::new_with_text("song", "My Heart Will Go On"),
+			&Comment::new("album list incomplete"),
+		]);
+		println!("{}", doc);
+		/* prints:
+			<?xml version="1.0" encoding="UTF-8"?>
+			<album>
+				<song>I Believe I Can Fly</song>
+				<song>My Heart Will Go On</song>
+				<!--album list incomplete-->
+			</album>
+		*/
+		Ok(())
+	}
+	```
+	 */
 	pub fn append_all(&mut self, children: &[&dyn Node]) {
 		todo!()
+		// TODO: if child is an element, set the namespace context
 	}
-
-	pub fn insert(&mut self, index: usize, node: impl Node) {
+	/**
+	Inserts the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an error result is returned.
+	 */
+	pub fn insert(&mut self, index: usize, node: impl Node) -> Result<(), kiss_xml::errors::IndexOutOfBounds> {
 		todo!()
 		// TODO: if this is an element, set the namespace context
 	}
-
-	pub fn remove(&mut self, index: usize) -> Option<Box<dyn Node>> {
+	/**
+	Removes the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an Err result is returned, otherwise the removed node is return as an Ok result.
+	 */
+	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, kiss_xml::errors::IndexOutOfBounds> {
 		todo!()
 	}
-
+	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes. */
 	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: FnMut(&dyn Node) -> bool {
 		// recursive, returns count
 		todo!()
 	}
-
+	/** Recursively removes all child elements matching the given predicate function, returning the number of removed elements. */
 	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: FnMut(&Element) -> bool {
 		// recursive, returns count
 		todo!()

@@ -18,6 +18,8 @@ pub enum KissXmlError {
 	TypeCastError(TypeCastError),
 	/// This error indicates that the user requested something that wasn't there
 	DoesNotExistError(DoesNotExistError),
+	/// This error indicates that the user requested an invalid index in a collection or slice
+	IndexOutOfBounds(IndexOutOfBounds),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
@@ -27,6 +29,8 @@ impl Display for KissXmlError {
 		match self {
 			KissXmlError::ParsingError(e) => write!(f, "{}", e),
 			KissXmlError::TypeCastError(e) => write!(f, "{}", e),
+			KissXmlError::DoesNotExistError(e) => write!(f, "{}", e),
+			KissXmlError::IndexOutOfBounds(e) => write!(f, "{}", e),
 			KissXmlError::IOError(e) => Display::fmt(&e, f)
 		}
 	}
@@ -119,4 +123,35 @@ impl Default for DoesNotExistError {
 }
 
 impl std::error::Error for DoesNotExistError{}
+
+/// Error indicating an attempt to index an array or collection with an invalid index
+#[derive(Clone, Debug)]
+pub struct IndexOutOfBounds {
+	/// The error index
+	pub index: isize,
+	/// optional correct bounds
+	pub bounds: Option<(isize, isize)>
+}
+
+impl IndexOutOfBounds{
+	/// New error with a given index
+	pub fn new(index: isize, bounds: Option<(isize, isize)>) -> Self {
+		Self{index, bounds}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		match self.bounds {
+			Some(b) => write!(f, "Index {} is out of bounds (valid range: {} - {})", &self.index, b.0, b.1),
+			None => write!(f, "Index {} is out of bounds", &self.index)
+		}
+	}
+}
+
+impl Display for IndexOutOfBounds {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "IndexOutOfBounds: {}", self.msg)
+	}
+}
+
+impl std::error::Error for IndexOutOfBounds{}
 
