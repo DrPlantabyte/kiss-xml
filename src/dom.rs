@@ -610,59 +610,238 @@ impl Element {
 	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
 		todo!()
 	}
+	/** Returns a list of all child elements with the given name as an iterator.
 
+		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	 */
 	pub fn elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
 		todo!()
 	}
+	/** Returns a list of all child elements with the given name as an iterator.
 
+		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	 */
 	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
 		todo!()
 	}
-
-	pub fn attributes(&self) -> &HashMap<impl Into<String>, impl Into<String>> {
+	/** Gets the attributes for this element as a `HashMap` */
+	pub fn attributes(&self) -> &HashMap<String, String> {
 		todo!()
 	}
-
+	/** Gets the attributes for this element as a `HashMap` */
+	pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
+		todo!()
+	}
+	/** Gets the value of an attribute for this Element by name. If there is no such attribute, `None` is returned */
 	pub fn get_attr(&self, attr_name: impl Into<String>) -> Option<String> {
 		todo!()
 	}
-
+	/** Sets the value of an attribute for this Element by name. */
 	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) {
 		todo!()
 	}
-
+	/** Deletes an attribute from this element */
 	pub fn remove_attr(&mut self, attr_name: impl Into<String>) -> Option<String> {
 		todo!()
 	}
-
 	/** Deletes all attributes from this element */
 	pub fn clear_attributes(&mut self) {todo!()}
+	/**
+	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		println!("Fantasy books:");
+		for fantasy_book in library.root_element.search(
+			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some("fantasy")
+		){
+			println!("{}", fantasy_book.text());
+		}
+		Ok(())
+	}
+	```
+	 */
 	pub fn search<P>(&self, predicate: P) -> Iter<&dyn Node> where P: FnMut(&dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
+	/**
+	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		// set count to "0" for all of the fantasy books
+		for fantasy_book in library.root_element.search_mut(
+			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some("fantasy")
+		){
+			fantasy_book.as_element()?.set_attr("count", "0")
+		}
+		Ok(())
+	}
+	```
+	 */
 	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<&dyn Node> where P: FnMut(&mut dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
+	/**
+	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		println!("Fantasy books:");
+		for fantasy_book in library.root_element.search_elements(
+			|e| e.get_attr("genre") == Some("fantasy")
+		){
+			println!("{}", fantasy_book.text());
+		}
+		Ok(())
+	}
+	```
+	 */
 	pub fn search_elements<P>(&self, predicate: P) -> Iter<Element> where P: FnMut(&Element) -> bool {
 		// recursive
 		todo!()
 	}
+	/**
+	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		// set count to "0" for all of the fantasy books
+		for fantasy_book in library.root_element.search_elements_mut(
+			|e| e.get_attr("genre") == Some("fantasy")
+		){
+			fantasy_book.set_attr("count", "0")
+		}
+		Ok(())
+	}
+	```
+	 */
 	pub fn search_elements_mut<P>(&mut self, predicate: P) -> IterMut<Element> where P: FnMut(&Element) -> bool {
 		// recursive
 		todo!()
 	}
+	/**
+	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		println!("All books:");
+		for book in library.root_element.search_elements_by_name(
+			"book"
+		){
+			println!("{}", book.text());
+		}
+		Ok(())
+	}
+	```
+ 	*/
 	pub fn search_elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
 		// recursive
 		todo!()
 	}
+	/**
+	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
 
+	# Example
+	```rust
+	fn main() -> Result<(), Box<dyn std::error::Error>> {
+		use kiss_xml;
+		use kiss_xml::dom::*;
+		let mut library = kiss_xml::parse_str(r#"<root>
+			<books>
+				<asian>
+					<book genre="fantasy" count="1">Journey to the West</book>
+				</asian>
+				<european>
+					<book genre="fantasy" count="1">The Lord of the Rings</book>
+					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
+				</european>
+			</books>
+		</root>"#)?;
+		// set count to "0" for all of the fantasy books
+		for book in library.root_element.search_elements_by_name_mut(
+			"book"
+		){
+			if book.get_attr("genre") == Some("fantasy") {
+				book.set_attr("count", "0");
+			}
+		}
+		Ok(())
+	}
+	```
+	 */
 	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
 		// recursive
 		todo!()
