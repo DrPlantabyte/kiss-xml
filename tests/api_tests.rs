@@ -259,7 +259,7 @@ fn test_remove_3(){
 		.first_element_by_name_mut("properties").unwrap()
 		.remove_elements_by_name("property");
 	doc.root_element_mut()
-		.remove_all(|n| n.is_comment() || (n.is_element() && n.name().unwrap() == "other"));
+		.remove_all(|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name().unwrap() == "other"));
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
@@ -343,7 +343,7 @@ fn test_namespaces_1() {
 	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
 	// check that namespaces were correctly parsed (no prefix)
-	assert_eq!(doc.root_element().namespace().unwrap(), Uri::from_str("internal://ns/a").unrwap(), "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
 	assert!(doc.root_element().namespace_prefix().is_none(), "XML namespace prefix not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
@@ -399,8 +399,8 @@ r#"<html>
 	println!("Comment: {}", first_comment.text().unwrap());
 	doc.root_element_mut().remove_all(|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body").remove_all(|_| true);
-	doc.root_element_mut().first_element_by_name_mut("body").append_all(
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
 		&[
 			&Element::new_with_text("h1", "Chapter 1"),
 			&Comment::new("Note: there is only one chapter"),

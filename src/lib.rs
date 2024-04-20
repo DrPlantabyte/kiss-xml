@@ -165,7 +165,6 @@ use std::path::Path;
 
 pub mod errors;
 pub mod dom;
-use dom::Node;
 
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string

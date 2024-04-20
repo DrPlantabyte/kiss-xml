@@ -149,7 +149,7 @@ impl IndexOutOfBounds{
 
 impl Display for IndexOutOfBounds {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "IndexOutOfBounds: {}", self.msg)
+		self.print(f)
 	}
 }
 
