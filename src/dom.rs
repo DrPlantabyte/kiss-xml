@@ -287,7 +287,6 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 }
 
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
-#[derive(Clone)]
 pub struct Element {
 	/// Name of this element
 	name: String,
@@ -317,7 +316,7 @@ impl Element {
 	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, KissXmlError> {
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		for (k, v) in attributes.iter() {
-			attrs.insert(k.to_string(), v.to_string())
+			attrs.insert(k.into(), v.into());
 		}
 		Ok(Self {
 			name: name.to_string(),
@@ -420,11 +419,15 @@ impl Element {
 	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
 	/// checks the element's attributes for xmlns definitions
 	/// Note that the default xmlns (if present) is saved as prefix ""
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, InvalidNamespaceUri> {
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, KissXmlError> {
 		// first check for default xlmns
 		let mut default_xmlns = parent_default_xmlns;
 		if attrs.contains_key("xmlns") {
-			default_xmlns = Some(Uri::from_str(attrs.get("xmlns").expect("logic error").as_str()).map_err(|e| KissXmlError::InvalidNamespaceUri(e))?);
+			default_xmlns = Some(
+				Uri::from_str(attrs.get("xmlns")
+					.expect("logic error").as_str())
+					.map_err(|e| KissXmlError::InvalidNamespaceUri(e))?
+			);
 		}
 		// then parse xmlns prefixes
 		let mut prefixes: HashMap<String, Uri> = HashMap::new();
@@ -1041,7 +1044,7 @@ impl Element {
 
 }
 
-impl Node for Element{
+impl Node for Element {
 
 	fn text(&self) -> Option<String> {
 		todo!()
@@ -1077,6 +1080,23 @@ impl Node for Element{
 
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
+	}
+}
+
+impl Clone for Element {
+	fn clone(&self) -> Self {
+		let mut children_copy: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
+		for c in self.child_nodes {
+			children_copy.push(Box::new(c.clone()));
+		}
+		Self {
+			name: self.name.clone(),
+			child_nodes: children_copy,
+			attributes: self.attributes.clone(),
+			xmlns: self.xmlns.clone(),
+			xmlns_prefix: self.xmlns_prefix.clone(),
+			xmlns_context: self.xmlns_context.clone(),
+		}
 	}
 }
 
@@ -1221,7 +1241,7 @@ impl Comment {
 	}
 }
 
-impl Node for Comment{
+impl Node for Comment {
 
 	fn text(&self) -> Option<String> {
 		todo!()
