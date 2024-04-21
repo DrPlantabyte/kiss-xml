@@ -1,4 +1,4 @@
-use kiss_xml::dom::Node;
+use std::collections::HashMap;
 
 #[test]
 fn test_xml_escapes() {
@@ -53,6 +53,39 @@ fn sample_xml_2() -> &'static str {
 		<other/>
 		<other/>
 	</mydata>
+</root>"#
+}
+
+fn sample_xml_3() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns="internal://ns/a">
+	<width>200</width>
+	<height>150</height>
+</root>"#
+}
+
+fn sample_xml_4() -> &'static str {
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>200</width>
+	<height>150</height>
+	<depth>50</depth>
+	<img:width>200</img:width>
+	<img:height>150</img:height>
+	<dim:width>200</dim:width>
+</root>"#
+}
+
+fn sample_xml_5() -> &'static str {
+	// Note: XML elements only inherit the default namespace of their parent, not the prefixed namespace
+	r#"<?xml version="1.0" encoding="UTF-8"?>
+<img:root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>200</width>
+	<height>150</height>
+	<img:width>200</img:width>
+	<img:height>150</img:height>
+	<dim:width>200</dim:width>
+	<dim:height>150</dim:height>
 </root>"#
 }
 
@@ -158,7 +191,7 @@ fn test_modify_dom() {
 		inserted text
 	</mydata>
 </root>"#;
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -190,12 +223,13 @@ fn test_remove_1(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
 fn test_remove_2(){
 	use kiss_xml;
+	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
@@ -214,7 +248,7 @@ fn test_remove_2(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -226,7 +260,7 @@ fn test_remove_3(){
 		.first_element_by_name_mut("properties").unwrap()
 		.remove_elements_by_name("property");
 	doc.root_element_mut()
-		.remove_all(|n| n.is_comment() || (n.is_element() && n.name() == "other"));
+		.remove_all(|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name() == "other"));
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
@@ -238,7 +272,7 @@ fn test_remove_3(){
 	</mydata>
 </root>"#;
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), expected_str, "Incorrect XML generated");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
 #[test]
@@ -247,7 +281,7 @@ fn test_dom_to_string() {
 	let xml_str = sample_xml_2();
 	let doc = kiss_xml::parse_str(xml_str).unwrap();
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
 }
 
 #[test]
@@ -262,7 +296,7 @@ fn test_dom_to_file() {
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
 	let mut tmpfile = File::create(file_path.clone()).unwrap();
-	doc.write_to_file(&tmpfile, Some(indent)).unwrap();
+	doc.write_to_file_with_indent(&tmpfile, indent).unwrap();
 	drop(tmpfile); // close the file before re-opening
 	// check what was written
 	let file_content = std::fs::read_to_string(file_path).unwrap();
@@ -276,11 +310,11 @@ fn test_dom_to_filepath() {
 	let xml_str = sample_xml_2();
 	let doc = kiss_xml::parse_str(xml_str).unwrap();
 	let indent = "\t";
-	assert_eq!(doc.to_string(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
+	assert_eq!(doc.to_string_with_indent(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
 	// Write sample XML to a file
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
-	doc.write_to_filepath(&file_path, Some(indent)).unwrap();
+	doc.write_to_filepath_with_indent(&file_path, indent).unwrap();
 	// check what was written
 	let file_content = std::fs::read_to_string(file_path).unwrap();
 	assert_eq!(file_content.as_str(), xml_str, "Source XML not recreated by write_to_filepath() method");
@@ -300,4 +334,181 @@ fn test_debug_display(){
 	let doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	println!("Document:\n{:?}\n\n", doc);
 	println!("Root Element:\n{:?}\n\n", doc.root_element());
+}
+
+#[test]
+fn test_namespaces_1() {
+	use http::Uri;
+	use std::str::FromStr;
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
+	// check that namespaces were correctly parsed (no prefix)
+	assert_eq!(doc.root_element().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
+	assert!(doc.root_element().namespace_prefix().is_none(), "XML namespace prefix not correctly parsed");
+	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly inherited");
+	// check that adding a new element inherits the namespace of the parent unless otherwise specified
+	doc.root_element_mut().append(Element::new::<&str,&str>("depth", Some("50"), None, None, None, None));
+	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly inherited");
+	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
+}
+
+#[test]
+fn test_namespaces_2() {
+	use http::Uri;
+	use std::str::FromStr;
+	use kiss_xml;
+	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
+	assert!(doc.root_element().namespace().is_none(), "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(None).count(), 3, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("dim")).count(), 1, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/b").unwrap())).count(), 1, "XML namespace not correctly parsed");
+	// check to_string
+	assert_eq!(doc.to_string_with_indent("\t").as_str(), sample_xml_4(), "XML not regenerated correctly")
+}
+
+#[test]
+fn test_namespaces_3() {
+	use kiss_xml;
+	let mut doc = kiss_xml::parse_str(sample_xml_5()).unwrap();
+	assert_eq!(doc.root_element().namespace_prefix().unwrap().as_str(), "img", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed or inherited");
+	assert_eq!(doc.root_element().elements_by_namespace_prefix(None).count(), 2, "XML namespace not correctly parsed or inherited");
+}
+
+#[test]
+fn test_modify_text_and_comments() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	use std::collections::HashMap;
+	let mut doc = kiss_xml::parse_str(
+r#"<html>
+	<!-- this is a comment ->
+	<body>
+		TODO: content here
+	</body>
+</html>"#
+	).unwrap();
+	// read and remove the first comment
+	let all_comments = doc.root_element().children()
+		.filter(|n| n.is_comment())
+		.collect::<Vec<_>>();
+	let first_comment = all_comments.first().unwrap();
+	println!("Comment: {}", first_comment.text().unwrap());
+	doc.root_element_mut().remove_all(|n| n.is_comment());
+	// replace content of <body> with some HTML
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
+		&[
+			&Element::new_with_text("h1", "Chapter 1"),
+			&Comment::new("Note: there is only one chapter"),
+			&Element::new_with_children("p", &[
+				&Text::new("Once upon a time, there was a little "),
+				&Element::new_with_attributes_and_text(
+					"a",
+					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
+					"gnome"
+				),
+				&Text::new(" who lived in a walnut tree...")
+			])
+		]
+	);
+	// print the results
+	println!("{}", doc.to_string());
+}
+
+#[test]
+fn test_mutable_iterators_1() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	let mut doc = kiss_xml::parse_str(sample_xml_1()).unwrap();
+	let mut root = doc.root_element_mut();
+	for e in root.child_elements_mut() {
+		if e.name() == "to" {e.set_text("Jim")}
+	}
+	for n in root.children_mut() {
+		if n.is_comment() {n.as_comment_mut().unwrap().content = "dog".into()}
+	}
+	for e in root.elements_by_name_mut("heading"){
+		e.set_text("To-Do")
+	}
+	for n in root.search_mut(|n| n.is_element() && n.as_element().unwrap().name() == "b") {
+		n.as_element_mut().unwrap().set_text("them")
+	}
+	for e in root.search_elements_mut(|e| e.text().is_some() && e.text().unwrap().contains(" - Jani")){
+		e.set_attr("p", "2")
+	}
+	for e in root.search_elements_by_name_mut("b") {
+		e.set_attr("class", "bold")
+	}
+	for t in root.search_text_mut(|t| t.text().unwrap().contains("Don't")) {
+		t.content = t.content.replace("Don't", "Do")
+	}
+	root.first_element_by_name_mut("to").unwrap().append(Comment::new("or did he prefer to be called James?"));
+	for c in root.search_comments_mut(|c| c.content.contains("James")) {
+		c.content = c.content.replace("James", "Jimmy")
+	}
+
+	assert_eq!(
+		doc.to_string_with_indent("\t"),
+		r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note [
+<!ENTITY ignore "kiss-xml ignores DOCTYPE stuff">
+<!ENTITY nbsp "&#xA0;">
+<!ENTITY writer "Writer: Donald Duck.">
+<!ENTITY copyright "Copyright: W3Schools.">
+]>
+<note>
+	<!--dog-->
+	<to>
+		Jim
+		<!--or did he prefer to be called Jimmy?-->
+	</to>
+	<from>Jani</from>
+	<heading>To-Do</heading>
+	<paragraph>Do forget <b class="bold">them</b> this weekend!</paragraph>
+	<paragraph p="2"> - Jani</paragraph>
+	<footer>&writer;&nbsp;&copyright;</footer>
+	<signed signer="Jani Jane"/>
+</note>
+"#,
+		"Incorrect mutation of XML DOM"
+	);
+
+}
+
+#[test]
+fn test_mutable_iterators_2() {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	use http::Uri;
+	use std::str::FromStr;
+	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
+	let mut root = doc.root_element_mut();
+	for e in root.elements_by_namespace_mut(None) {
+		e.set_text("22");
+	}
+	for e in root.elements_by_namespace_mut(Some(&Uri::from_str("internal://ns/b").unwrap())) {
+		e.set_text("66");
+	}
+	for e in root.elements_by_namespace_prefix_mut(Some("img")) {
+		e.set_text("44");
+	}
+	assert_eq!(
+		doc.to_string_with_indent("\t"),
+		r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+	<width>22</width>
+	<height>22</height>
+	<depth>22</depth>
+	<img:width>44</img:width>
+	<img:height>44</img:height>
+	<dim:width>66</dim:width>
+</root>"#,
+		"Incorrect mutation of XML DOM"
+	);
 }
