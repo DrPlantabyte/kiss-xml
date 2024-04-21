@@ -40,6 +40,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
+use std::fs;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
@@ -51,7 +52,12 @@ use crate::errors::*;
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
 */
 pub struct Document {
-	// TODO
+	/// Optional XML declaration (ie `<?xml version="1.0" encoding="UTF-8"?>`)
+	declaration: Option<Declaration>,
+	/// Doctype defs, if any
+	dtds: Vec<DTD>,
+	/// Root element (multi-element XML docs not supported)
+	root_element: Element
 }
 
 impl Document {
@@ -59,43 +65,53 @@ impl Document {
 Constructs a new Document with the given root element and default declaration
 	 */
 	pub fn new(root: Element) -> Self {
-		todo!()
+		Document::new_with_decl_dtd(root, Some(Declaration::default()), None)
 	}
 	/**
 Full constructor with required root element and optional XML declaration and optional list of one or more document type definition (DTD) items.
 	 */
 	pub fn new_with_decl_dtd(root: Element, declaration: Option<Declaration>, dtd: Option<&[DTD]>) -> Self {
-		todo!()
+		Self{
+			declaration: declaration,
+			dtds: match dtd{
+				None => Vec::with_capacity(1),
+				Some(dtds) => Vec::from(dtds)
+			},
+			root_element: root
+		}
 	}
 	/**
 	Returns a list of any and all DTDs for this Document as an iterator
 	 */
 	pub fn doctype_defs(&self) -> Iter<DTD> {
-		todo!()
+		self.dtds.iter()
 	}
 	/**
 	Returns a list of any and all DTDs for this Document as an iterator
 	 */
 	pub fn doctype_defs_mut(&mut self) -> IterMut<DTD> {
-		todo!()
+		self.dtds.iter_mut()
 	}
 	/**
 Sets the DTDs for this document (a `None` argument will remove all DTDs)
 	 */
 	pub fn set_doctype_defs(&mut self, dtds: Option<&[DTD]>) {
-		todo!()
+		match dtds {
+			None => self.dtds = Vec::with_capacity(1),
+			Some(dlist) => self.dtds = Vec::from(dlist)
+		}
 	}
 	/**
 Gets the XML declaration for this document, if it has one (while the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file).
 	 */
-	pub fn declaration(&self) -> Option<&Declaration> {
-		todo!()
+	pub fn declaration(&self) -> &Option<Declaration> {
+		&self.declaration
 	}
 	/**
 Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
 	 */
 	pub fn set_declaration(&mut self, decl: Declaration) {
-		todo!()
+		self.declaration = Some(decl)
 	}
 
 	/**
@@ -109,7 +125,21 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	Produces the XML text representing this XML DOM using the provided indent
 	 */
 	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
-		todo!()
+		let mut builder = String::new();
+		match &self.declaration{
+			None => {},
+			Some(decl) => {
+				builder.push_str(decl.to_string().as_str());
+				builder.push_str("\n");
+			}
+		}
+		for dtd in &self.dtds {
+			builder.push_str(dtd.to_string().as_str());
+			builder.push_str("\n");
+		}
+		builder.push_str(&self.root_element.as_string_with_indent(indent));
+		builder.push_str("\n");
+		return builder;
 	}
 
 	/**
@@ -123,7 +153,8 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	Writes this document as XML to the given file using the provided indent, returning a result indicating success or error in this write operation
 	 */
 	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
-		todo!()
+		use std::fs;
+		fs::write(path, self.to_string_with_indent(indent))
 	}
 
 	/**
