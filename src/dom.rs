@@ -234,58 +234,42 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_element(&self) -> Result<&Element, TypeCastError> {
-		todo!()
-	}
+	fn as_element(&self) -> Result<&Element, TypeCastError>;
 
 	/**
 	Casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
-		todo!()
-	}
+	fn as_comment(&self) -> Result<&Comment, TypeCastError>;
 
 	/**
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_text(&self) -> Result<&Text, TypeCastError> {
-		todo!()
-	}
+	fn as_text(&self) -> Result<&Text, TypeCastError>;
 
 	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {
-		todo!()
-	}
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError>;
 
 	/**
 	Casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {
-		todo!()
-	}
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError>;
 
 	/**
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
-	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {
-		todo!()
-	}
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError>;
 
 	/**
 	Casts this struct to a Node trait object
 	 */
-	fn as_node(&self) -> &dyn Node where Self: Sized {
-		self
-	}
+	fn as_node(&self) -> &dyn Node;
 
 	/**
 	Casts this struct to a Node trait object
 	 */
-	fn as_node_mut(&mut self) -> &mut dyn Node where Self: Sized {
-		self
-	}
+	fn as_node_mut(&mut self) -> &mut dyn Node;
 
 	/**
 	Writes this Node to a string with the provided indent (used to serialize to XML)
@@ -1017,6 +1001,22 @@ impl Node for Element{
 		todo!()
 	}
 
+	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
+
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+
+	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
+
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+
+	fn as_node(&self) -> &dyn Node {self}
+
+	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
@@ -1079,7 +1079,7 @@ impl From<String> for Text {
 	}
 }
 
-impl Node for Text{
+impl Node for Text {
 
 	fn text(&self) -> Option<String> {
 		todo!()
@@ -1096,6 +1096,22 @@ impl Node for Text{
 	fn is_comment(&self) -> bool {
 		todo!()
 	}
+
+	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
+
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
+
+	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
+
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
+
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
+
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Ok(self)}
+
+	fn as_node(&self) -> &dyn Node {self}
+
+	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
@@ -1164,6 +1180,22 @@ impl Node for Comment{
 	fn is_comment(&self) -> bool {
 		todo!()
 	}
+
+	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
+
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
+
+	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
+
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Ok(self)}
+
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+
+	fn as_node(&self) -> &dyn Node {self}
+
+	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
