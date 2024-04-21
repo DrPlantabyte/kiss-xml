@@ -284,7 +284,7 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new(name: &str, text: Option<&str>, attributes: Option<HashMap<impl Into<String>, impl Into<String>>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Self {todo!()}
+	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Self {todo!()}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
 		todo!()
@@ -554,7 +554,7 @@ impl Element {
 		todo!()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children_mut(&mut self) -> IterMut<&dyn Node>{
+	pub fn children_mut(&mut self) -> IterMut<&mut dyn Node>{
 		todo!()
 	}
 
@@ -707,7 +707,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<&dyn Node> where P: FnMut(&mut dyn Node) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<&mut dyn Node> where P: FnMut(&mut dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
