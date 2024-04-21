@@ -22,6 +22,8 @@ pub enum KissXmlError {
 	IndexOutOfBounds(IndexOutOfBounds),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
+	/// An error when parsing an XML namespace URI
+	InvalidNamespaceUri(http::uri::InvalidUri),
 }
 
 impl Display for KissXmlError {
@@ -31,7 +33,8 @@ impl Display for KissXmlError {
 			KissXmlError::TypeCastError(e) => write!(f, "{}", e),
 			KissXmlError::DoesNotExistError(e) => write!(f, "{}", e),
 			KissXmlError::IndexOutOfBounds(e) => write!(f, "{}", e),
-			KissXmlError::IOError(e) => Display::fmt(&e, f)
+			KissXmlError::IOError(e) => Display::fmt(&e, f),
+			KissXmlError::InvalidNamespaceUri(e) => Display::fmt(&e, f)
 		}
 	}
 }

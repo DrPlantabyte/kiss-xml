@@ -45,8 +45,8 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::{Iter, IterMut};
+use std::str::FromStr;
 use http::Uri;
-use http::uri::InvalidUri;
 use crate::errors::*;
 use crate::errors::KissXmlError::ParsingError;
 
@@ -314,19 +314,19 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, InvalidUri> {
+	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, KissXmlError> {
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		for (k, v) in attributes.iter() {
 			attrs.insert(k.to_string(), v.to_string())
 		}
-		Self {
+		Ok(Self {
 			name: name.to_string(),
 			child_nodes: Vec::from(children),
 			attributes: attrs,
 			xmlns,
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string()),
 			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None)?
-		}
+		})
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
@@ -419,10 +419,36 @@ impl Element {
 	 */
 	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
 	/// checks the element's attributes for xmlns definitions
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, InvalidUri> {
+	/// Note that the default xmlns (if present) is saved as prefix ""
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, InvalidNamespaceUri> {
+		// first check for default xlmns
 		let mut default_xmlns = parent_default_xmlns;
-		if attrs.contains_key()
-		todo!()
+		if attrs.contains_key("xmlns") {
+			default_xmlns = Some(Uri::from_str(attrs.get("xmlns").expect("logic error").as_str()).map_err(|e| KissXmlError::InvalidNamespaceUri(e))?);
+		}
+		// then parse xmlns prefixes
+		let mut prefixes: HashMap<String, Uri> = HashMap::new();
+		for (k, v) in attrs.iter() {
+			let key = k.as_str();
+			if key.starts_with("xmlns:") {
+				let split: Vec<&str> = key.splitn(2, ":").collect();
+				let prefix = split[1].to_string();
+				let ns = Uri::from_str(v).map_err(|e| KissXmlError::InvalidNamespaceUri(e))?;
+				prefixes.insert(prefix, ns);
+			}
+		}
+		// if there are no xmlns defs, return None
+		if default_xmlns.is_none() && prefixes.len() == 0 {
+			return Ok(None);
+		} else {
+			// add default xmlns as "" in the prefix map
+			match default_xmlns {
+				None => {}
+				Some(def_ns) => {prefixes.insert("".to_string(), def_ns);}
+			}
+			// return prefix map
+			return Ok(Some(prefixes));
+		}
 	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
 	pub fn name(&self) -> String {
