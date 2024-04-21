@@ -46,7 +46,9 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::{Iter, IterMut};
 use http::Uri;
+use http::uri::InvalidUri;
 use crate::errors::*;
+use crate::errors::KissXmlError::ParsingError;
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -287,7 +289,18 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
 #[derive(Clone)]
 pub struct Element {
-	// TODO
+	/// Name of this element
+	name: String,
+	/// All child nodes
+	child_nodes: Vec<Box<dyn Node>>,
+	/// This element's attributes
+	attributes: HashMap<String, String>,
+	/// optional xmlns (if xmlns_prefix is None then this is default namespace)
+	xmlns: Option<Uri>,
+	/// optional xmlns (if xmlns_prefix is None then the xmlns is default namespace)
+	xmlns_prefix: Option<String>,
+	/// xmlns definitions for this element, if any
+	xmlns_context: Option<HashMap<String, Uri>>
 }
 
 impl Element {
@@ -301,7 +314,20 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Self {todo!()}
+	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, InvalidUri> {
+		let mut attrs: HashMap<String, String> = HashMap::new();
+		for (k, v) in attributes.iter() {
+			attrs.insert(k.to_string(), v.to_string())
+		}
+		Self {
+			name: name.to_string(),
+			child_nodes: Vec::from(children),
+			attributes: attrs,
+			xmlns,
+			xmlns_prefix: xmlns_prefix.map(|s| s.to_string()),
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None)?
+		}
+	}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
 		todo!()
@@ -392,6 +418,12 @@ impl Element {
 	```
 	 */
 	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
+	/// checks the element's attributes for xmlns definitions
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, InvalidUri> {
+		let mut default_xmlns = parent_default_xmlns;
+		if attrs.contains_key()
+		todo!()
+	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
 	pub fn name(&self) -> String {
 		todo!()
