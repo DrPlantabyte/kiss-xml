@@ -498,7 +498,7 @@ impl Element {
 		Ok(())
 	}
 	 */
-	pub fn elements_by_namespace_prefix(&mut self, prefix: Option<&str>) -> Iter<Element>{
+	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> Iter<Element>{
 		todo!()
 	}
 	/**
@@ -550,11 +550,11 @@ impl Element {
 		todo!()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children(&self) -> Iter<&dyn Node>{
+	pub fn children(&self) -> Iter<Box<dyn Node>>{
 		todo!()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children_mut(&mut self) -> IterMut<&mut dyn Node>{
+	pub fn children_mut(&mut self) -> IterMut<Box<dyn Node>>{
 		todo!()
 	}
 
@@ -674,7 +674,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: P) -> Iter<&dyn Node> where P: FnMut(&dyn Node) -> bool {
+	pub fn search<P>(&self, predicate: P) -> Iter<Box<dyn Node>> where P: FnMut(&dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
@@ -707,7 +707,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<&mut dyn Node> where P: FnMut(&mut dyn Node) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<Box<dyn Node>> where P: FnMut(&mut dyn Node) -> bool {
 		// recursive
 		todo!()
 	}

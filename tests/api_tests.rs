@@ -394,9 +394,10 @@ r#"<html>
 </html>"#
 	).unwrap();
 	// read and remove the first comment
-	let first_comment = doc.root_element().children()
+	let all_comments = doc.root_element().children()
 		.filter(|n| n.is_comment())
-		.collect::<Vec<_>>().first().unwrap();
+		.collect::<Vec<_>>();
+	let first_comment = all_comments.first().unwrap();
 	println!("Comment: {}", first_comment.text().unwrap());
 	doc.root_element_mut().remove_all(|n| n.is_comment());
 	// replace content of <body> with some HTML
