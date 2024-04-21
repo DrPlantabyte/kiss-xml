@@ -158,49 +158,51 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	}
 
 	/**
-	Writes this document as XML to the given file using the default indent of two spaces per level, returning a result indicating success or error in this write operation
+	Writes this document as XML to the given file or stream using the default indent of two spaces per level, returning a result indicating success or error in this write operation
 	 */
-	pub fn write_to_file(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
-		self.write_to_file_with_indent(file, "  ")
+	pub fn write_to_file(&self, out: &mut impl std::io::Write, indent: impl Into<String>) -> std::io::Result<()> {
+		self.write_to_file_with_indent(out, "  ")
 	}
 
 	/**
-	Writes this document as XML to the given file using the default indent of two spaces per level, returning a result indicating success or error in this write operation
+	Writes this document as XML to the given file or stream using the default indent of two spaces per level, returning a result indicating success or error in this write operation
 	 */
-	pub fn write_to_file_with_indent(&self, file: &File, indent: impl Into<String>) -> std::io::Result<()> {
-		todo!()
+	pub fn write_to_file_with_indent(&self, out: &mut impl std::io::Write, indent: impl Into<String>) -> std::io::Result<()> {
+		write!(out, "{}", self.to_string_with_indent(indent))
 	}
 
 	/**
 	Returns the root element of this DOM as an immutable reference
 	 */
 	pub fn root_element(&self) -> &Element {
-		todo!()
+		&self.root_element
 	}
 
 	/**
 	Returns the root element of this DOM as a mutable reference.
 	  */
 	pub fn root_element_mut(&mut self) -> &mut Element {
-		todo!()
+		&mut self.root_element
 	}
 }
 
 impl std::fmt::Display for Document{
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
 impl std::fmt::Debug for Document{
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
 impl PartialEq<Self> for Document {
 	fn eq(&self, other: &Self) -> bool {
-		todo!()
+		self.declaration == other.declaration
+		&& self.dtds == other.dtds
+		&& self.root_element == other.root_element
 	}
 }
 
