@@ -296,7 +296,7 @@ fn test_dom_to_file() {
 	let dir = tempdir().unwrap();
 	let file_path = dir.path().join("Note.xml");
 	let mut tmpfile = File::create(file_path.clone()).unwrap();
-	doc.write_to_file_with_indent(&tmpfile, indent).unwrap();
+	doc.write_to_file_with_indent(&mut tmpfile, indent).unwrap();
 	drop(tmpfile); // close the file before re-opening
 	// check what was written
 	let file_content = std::fs::read_to_string(file_path).unwrap();

@@ -137,7 +137,7 @@ Produces the XML text representing this XML DOM using the default indent of two 
 			builder.push_str(dtd.to_string().as_str());
 			builder.push_str("\n");
 		}
-		builder.push_str(&self.root_element.as_string_with_indent(indent));
+		builder.push_str(&self.root_element.as_string_with_indent(indent.into().as_str()));
 		builder.push_str("\n");
 		return builder;
 	}
@@ -160,7 +160,7 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	/**
 	Writes this document as XML to the given file or stream using the default indent of two spaces per level, returning a result indicating success or error in this write operation
 	 */
-	pub fn write_to_file(&self, out: &mut impl std::io::Write, indent: impl Into<String>) -> std::io::Result<()> {
+	pub fn write_to_file(&self, out: &mut impl std::io::Write) -> std::io::Result<()> {
 		self.write_to_file_with_indent(out, "  ")
 	}
 
