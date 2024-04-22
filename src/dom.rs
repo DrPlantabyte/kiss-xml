@@ -313,14 +313,29 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>, TEXT2: Into<String>>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, KissXmlError> {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, KissXmlError> {
 		let mut attrs: HashMap<String, String> = HashMap::new();
-		for (k, v) in attributes.iter() {
-			attrs.insert(k.into(), v.into());
+		match attributes {
+			None => {}
+			Some(attr_map) => {
+				for (k, v) in attr_map.iter() {
+					attrs.insert(k.clone().into(), v.clone().into());
+				}
+			}
 		}
+		let child_arr = match children {
+			None => Vec::new(),
+			Some(child_slice) => {
+				let mut v = Vec::with_capacity(child_slice.len());
+				for c in child_slice {
+					v.push(Box::new(c.clone()));
+				}
+				v
+			}
+		};
 		Ok(Self {
 			name: name.to_string(),
-			child_nodes: Vec::from(children),
+			child_nodes: child_arr,
 			attributes: attrs,
 			xmlns,
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string()),
