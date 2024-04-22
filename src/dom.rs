@@ -284,6 +284,8 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 	fn as_string(&self) -> String {
 		self.as_string_with_indent("  ")
 	}
+	/** Converts this node into a `Box<dyn Node>` for convenient use in collections */
+	fn boxed(self) -> Box<dyn Node>;
 }
 
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
@@ -313,7 +315,7 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<&[&dyn Node]>) -> Result<Self, KissXmlError> {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, KissXmlError> {
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
 			None => {}
@@ -325,21 +327,15 @@ impl Element {
 		}
 		let child_arr = match children {
 			None => Vec::new(),
-			Some(child_slice) => {
-				let mut v = Vec::with_capacity(child_slice.len());
-				for c in child_slice {
-					v.push(Box::new(c.clone()));
-				}
-				v
-			}
+			Some(child_vec) => child_vec
 		};
 		Ok(Self {
 			name: name.to_string(),
 			child_nodes: child_arr,
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None)?,
 			attributes: attrs,
 			xmlns,
-			xmlns_prefix: xmlns_prefix.map(|s| s.to_string()),
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None)?
+			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
 		})
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
@@ -1096,22 +1092,27 @@ impl Node for Element {
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
+
+	fn boxed(self) -> Box<dyn Node> {
+		Box::new(self)
+	}
 }
 
 impl Clone for Element {
 	fn clone(&self) -> Self {
-		let mut children_copy: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
-		for c in self.child_nodes {
-			children_copy.push(Box::new(c.clone()));
-		}
-		Self {
-			name: self.name.clone(),
-			child_nodes: children_copy,
-			attributes: self.attributes.clone(),
-			xmlns: self.xmlns.clone(),
-			xmlns_prefix: self.xmlns_prefix.clone(),
-			xmlns_context: self.xmlns_context.clone(),
-		}
+		todo!()
+		// let mut children_copy: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
+		// for c in self.child_nodes {
+		// 	children_copy.push(Box::new(c.clone()));
+		// }
+		// Self {
+		// 	name: self.name.clone(),
+		// 	child_nodes: children_copy,
+		// 	attributes: self.attributes.clone(),
+		// 	xmlns: self.xmlns.clone(),
+		// 	xmlns_prefix: self.xmlns_prefix.clone(),
+		// 	xmlns_context: self.xmlns_context.clone(),
+		// }
 	}
 }
 
@@ -1209,6 +1210,10 @@ impl Node for Text {
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
+
+	fn boxed(self) -> Box<dyn Node> {
+		Box::new(self)
+	}
 }
 
 impl PartialOrd for Text {
@@ -1292,6 +1297,10 @@ impl Node for Comment {
 
 	fn as_string_with_indent(&self, indent: &str) -> String {
 		todo!()
+	}
+
+	fn boxed(self) -> Box<dyn Node> {
+		Box::new(self)
 	}
 }
 
