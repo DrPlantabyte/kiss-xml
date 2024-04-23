@@ -209,7 +209,7 @@ impl PartialEq<Self> for Document {
 /**
 A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but only Elements can be branch nodes with children of their own.
  */
-pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
+pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + Into<Box<dyn Node>> {
 
 	/**
 	Returns the text content of the code. For a Comment or Text node, this is just the comment or text string. For an Element, this will return *all* text (including from child elements, recursive scan) as a single string, or `None` if this element has no child text nodes
@@ -1132,6 +1132,13 @@ impl Default for Element {
 	}
 }
 
+
+impl Into<Box<dyn Node>> for Element {
+	fn into(self) -> Box<dyn Node> {
+		self.boxed()
+	}
+}
+
 impl PartialOrd for Element {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 		todo!()
@@ -1232,6 +1239,12 @@ impl Node for Text {
 	}
 }
 
+impl Into<Box<dyn Node>> for Text {
+	fn into(self) -> Box<dyn Node> {
+		self.boxed()
+	}
+}
+
 impl PartialOrd for Text {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 		todo!()
@@ -1329,6 +1342,12 @@ impl From<&str> for Comment {
 impl From<String> for Comment {
 	fn from(value: String) -> Self {
 		Comment::new(value)
+	}
+}
+
+impl Into<Box<dyn Node>> for Comment {
+	fn into(self) -> Box<dyn Node> {
+		self.boxed()
 	}
 }
 
