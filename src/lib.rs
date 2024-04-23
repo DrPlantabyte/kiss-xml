@@ -118,6 +118,8 @@ The XML DOM is made up of Node objects (trait objects implementing trait kiss_xm
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
+	use kiss_xml::dom::*;
+	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
 	<!-- this is a comment ->

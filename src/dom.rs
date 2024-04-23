@@ -46,9 +46,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
-use http::Uri;
 use crate::errors::*;
-use crate::errors::KissXmlError::ParsingError;
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -297,11 +295,11 @@ pub struct Element {
 	/// This element's attributes
 	attributes: HashMap<String, String>,
 	/// optional xmlns (if xmlns_prefix is None then this is default namespace)
-	xmlns: Option<Uri>,
+	xmlns: Option<String>,
 	/// optional xmlns (if xmlns_prefix is None then the xmlns is default namespace)
 	xmlns_prefix: Option<String>,
 	/// xmlns definitions for this element, if any
-	xmlns_context: Option<HashMap<String, Uri>>
+	xmlns_context: Option<HashMap<String, String>>
 }
 
 impl Element {
@@ -315,7 +313,7 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<Uri>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, KissXmlError> {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Self {
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
 			None => {}
@@ -325,22 +323,29 @@ impl Element {
 				}
 			}
 		}
-		let child_arr = match children {
+		let mut child_arr = match children {
 			None => Vec::new(),
 			Some(child_vec) => child_vec
 		};
-		Ok(Self {
+		match text {
+			None => {}
+			Some(t) => child_arr.insert(0, Text::new(t).boxed())
+		}
+		Self {
 			name: name.to_string(),
 			child_nodes: child_arr,
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None)?,
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
 			attributes: attrs,
-			xmlns,
+			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
-		})
+		}
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
-		todo!()
+		Self {
+			name: name.to_string(),
+			..Default::default()
+		}
 	}
 	/** Creates a new Element with the specified name and attributes.
 	# Example
@@ -355,12 +360,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>) -> Self {
-		todo!()
+	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Self {
+		Self::new(name, None, Some(attributes), None, None, None)
 	}
 	/// Creates a new Element with the specified name and text content
 	pub fn new_with_text(name: &str, text: &str) -> Self {
-		todo!()
+		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None)
 	}
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
@@ -379,8 +384,8 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>, text: &str) -> Self {
-		todo!()
+	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Self {
+		Self::new(name, Some(text), Some(attributes), None, None, None)
 	}
 	/**
 	Creates a new Element with the specified name, attributes, and children.
@@ -394,7 +399,7 @@ impl Element {
 			HashMap::from(&[
 				("id", "123")
 			]),
-			&[&Element::new_with_text("name", "Billy Bob")]
+			vec![Element::new_with_text("name", "Billy Bob").boxed()]
 		);
 		println!("{}", e)
 		/* prints:
@@ -405,7 +410,9 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_children(name: &str, attributes: HashMap<impl Into<String>, impl Into<String>>, children: &[&dyn Node]) -> Self {todo!()}
+	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Self {
+		Self::new(name, None, Some(attributes), None, None, Some(children))
+	}
 
 	/**
 	Creates a new Element with the specified name and children.
@@ -416,7 +423,7 @@ impl Element {
 		use std::collections::HashMap;
 		let e = Element::new_with_children(
 			"contact",
-			&[&Element::new_with_text("name", "Billy Bob")]
+			vec![Element::new_with_text("name", "Billy Bob").boxed()]
 		);
 		println!("{}", e)
 		/* prints:
@@ -427,33 +434,33 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_children(name: &str, children: &[&dyn Node]) -> Self {todo!()}
+	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Self {
+		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
+	}
 	/// checks the element's attributes for xmlns definitions
 	/// Note that the default xmlns (if present) is saved as prefix ""
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<Uri>) -> Result<Option<HashMap<String, Uri>>, KissXmlError> {
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<String>) -> Option<HashMap<String, String>> {
 		// first check for default xlmns
 		let mut default_xmlns = parent_default_xmlns;
 		if attrs.contains_key("xmlns") {
 			default_xmlns = Some(
-				Uri::from_str(attrs.get("xmlns")
-					.expect("logic error").as_str())
-					.map_err(|e| KissXmlError::InvalidNamespaceUri(e))?
+				attrs.get("xmlns").expect("logic error").to_string()
 			);
 		}
 		// then parse xmlns prefixes
-		let mut prefixes: HashMap<String, Uri> = HashMap::new();
+		let mut prefixes: HashMap<String, String> = HashMap::new();
 		for (k, v) in attrs.iter() {
 			let key = k.as_str();
 			if key.starts_with("xmlns:") {
 				let split: Vec<&str> = key.splitn(2, ":").collect();
 				let prefix = split[1].to_string();
-				let ns = Uri::from_str(v).map_err(|e| KissXmlError::InvalidNamespaceUri(e))?;
+				let ns = v.clone();
 				prefixes.insert(prefix, ns);
 			}
 		}
 		// if there are no xmlns defs, return None
 		if default_xmlns.is_none() && prefixes.len() == 0 {
-			return Ok(None);
+			return None;
 		} else {
 			// add default xmlns as "" in the prefix map
 			match default_xmlns {
@@ -461,7 +468,7 @@ impl Element {
 				Some(def_ns) => {prefixes.insert("".to_string(), def_ns);}
 			}
 			// return prefix map
-			return Ok(Some(prefixes));
+			return Some(prefixes);
 		}
 	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
@@ -471,13 +478,13 @@ impl Element {
 	/**
 	Returns the namespace of this element, or `None` if it does not have a namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
 	 */
-	pub fn namespace(&self) -> Option<Uri> {
+	pub fn namespace(&self) -> Option<String> {
 		todo!()
 	}
 	/**
 	Returns the default namespace of this element, or `None` if it does not have a default namespace. Default namespaces do not use prefixes and are inherited by the element's children.
 	 */
-	pub fn default_namespace(&self) -> Option<Uri> {
+	pub fn default_namespace(&self) -> Option<String> {
 		todo!()
 	}
 	/**
@@ -494,7 +501,6 @@ impl Element {
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use http::Uri;
 		use std::str::FromStr;
 		use kiss_xml;
 		use kiss_xml::dom::*;
@@ -507,7 +513,7 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a")?)){
+		for e in doc.root_element().elements_by_namespace(Some(&String::from_str("internal://ns/a")?)){
 			println!("img element <{}> contains '{}'", e.name(), e.text())
 		}
 		/* Prints:
@@ -518,7 +524,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace(&self, namespace: Option<&Uri>) -> Iter<Element>{
+	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> Iter<Element>{
 		todo!()
 	}
 	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
@@ -527,7 +533,6 @@ impl Element {
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use http::Uri;
 		use std::str::FromStr;
 		use kiss_xml;
 		use kiss_xml::dom::*;
@@ -540,10 +545,10 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace_mut(Some(&Uri::from_str("internal://ns/a")?)){
+		for e in doc.root_element().elements_by_namespace_mut(Some("internal://ns/a")){
 			e.set_text("0");
 		}
-		for e in doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a")?)){
+		for e in doc.root_element().elements_by_namespace(Some("internal://ns/a")){
 			println!("img element <{}> contains '{}'", e.name(), e.text())
 		}
 		/* Prints:
@@ -554,7 +559,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&Uri>) -> IterMut<Element>{
+	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> IterMut<Element>{
 		todo!()
 	}
 	/**
@@ -564,7 +569,6 @@ impl Element {
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use http::Uri;
 		use std::str::FromStr;
 		use kiss_xml;
 		use kiss_xml::dom::*;
@@ -597,7 +601,6 @@ impl Element {
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use http::Uri;
 		use std::str::FromStr;
 		use kiss_xml;
 		use kiss_xml::dom::*;
@@ -627,9 +630,9 @@ impl Element {
 		todo!()
 	}
 	/** Gets any and all xmlns prefixes defined in this element */
-	fn namespace_prefixes(&self) -> &Option<HashMap<String, Uri>> {todo!()}
+	fn namespace_prefixes(&self) -> &Option<HashMap<String, String>> {todo!()}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
-	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, Uri>>) { todo!()}
+	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) -> Iter<Element>{
 		todo!()
@@ -1007,7 +1010,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn append_all(&mut self, children: &[&dyn Node]) {
+	pub fn append_all(&mut self, children: Vec<Box<dyn Node>>) {
 		todo!()
 		// TODO: if child is an element, set the namespace context
 	}
@@ -1113,6 +1116,19 @@ impl Clone for Element {
 		// 	xmlns_prefix: self.xmlns_prefix.clone(),
 		// 	xmlns_context: self.xmlns_context.clone(),
 		// }
+	}
+}
+
+impl Default for Element {
+	fn default() -> Self {
+		Self {
+			name: "x".to_string(),
+			child_nodes: vec![],
+			attributes: Default::default(),
+			xmlns: None,
+			xmlns_prefix: None,
+			xmlns_context: None,
+		}
 	}
 }
 

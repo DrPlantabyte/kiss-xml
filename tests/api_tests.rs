@@ -338,26 +338,24 @@ fn test_debug_display(){
 
 #[test]
 fn test_namespaces_1() {
-	use http::Uri;
 	use std::str::FromStr;
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
 	// check that namespaces were correctly parsed (no prefix)
-	assert_eq!(doc.root_element().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly parsed");
 	assert!(doc.root_element().namespace_prefix().is_none(), "XML namespace prefix not correctly parsed");
-	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly inherited");
+	assert_eq!(doc.root_element().first_element_by_name("width").unwrap().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some("internal://ns/a")).count(), 2, "XML namespace not correctly inherited");
 	// check that adding a new element inherits the namespace of the parent unless otherwise specified
-	doc.root_element_mut().append(Element::new::<&str,&str>("depth", Some("50"), None, None, None, None).unwrap());
-	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap(), Uri::from_str("internal://ns/a").unwrap(), "XML namespace not correctly inherited");
+	doc.root_element_mut().append(Element::new::<&str,&str>("depth", Some("50"), None, None, None, None));
+	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly inherited");
 	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
 }
 
 #[test]
 fn test_namespaces_2() {
-	use http::Uri;
 	use std::str::FromStr;
 	use kiss_xml;
 	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
@@ -365,8 +363,8 @@ fn test_namespaces_2() {
 	assert_eq!(doc.root_element().elements_by_namespace(None).count(), 3, "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("dim")).count(), 1, "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/a").unwrap())).count(), 2, "XML namespace not correctly parsed");
-	assert_eq!(doc.root_element().elements_by_namespace(Some(&Uri::from_str("internal://ns/b").unwrap())).count(), 1, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some("internal://ns/a")).count(), 2, "XML namespace not correctly parsed");
+	assert_eq!(doc.root_element().elements_by_namespace(Some("internal://ns/b")).count(), 1, "XML namespace not correctly parsed");
 	// check to_string
 	assert_eq!(doc.to_string_with_indent("\t").as_str(), sample_xml_4(), "XML not regenerated correctly")
 }
@@ -403,18 +401,18 @@ r#"<html>
 	// replace content of <body> with some HTML
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
-		&[
-			&Element::new_with_text("h1", "Chapter 1"),
-			&Comment::new("Note: there is only one chapter"),
-			&Element::new_with_children("p", &[
-				&Text::new("Once upon a time, there was a little "),
-				&Element::new_with_attributes_and_text(
+		vec![
+			Element::new_with_text("h1", "Chapter 1").boxed(),
+			Comment::new("Note: there is only one chapter").boxed(),
+			Element::new_with_children("p", vec![
+				Text::new("Once upon a time, there was a little ").boxed(),
+				Element::new_with_attributes_and_text(
 					"a",
 					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
 					"gnome"
-				),
-				&Text::new(" who lived in a walnut tree...")
-			])
+				).boxed(),
+				Text::new(" who lived in a walnut tree...").boxed()
+			]).boxed()
 		]
 	);
 	// print the results
@@ -484,15 +482,13 @@ fn test_mutable_iterators_1() {
 #[test]
 fn test_mutable_iterators_2() {
 	use kiss_xml;
-	use kiss_xml::dom::*;
-	use http::Uri;
 	use std::str::FromStr;
 	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
 	let mut root = doc.root_element_mut();
 	for e in root.elements_by_namespace_mut(None) {
 		e.set_text("22");
 	}
-	for e in root.elements_by_namespace_mut(Some(&Uri::from_str("internal://ns/b").unwrap())) {
+	for e in root.elements_by_namespace_mut(Some("internal://ns/b")) {
 		e.set_text("66");
 	}
 	for e in root.elements_by_namespace_prefix_mut(Some("img")) {
