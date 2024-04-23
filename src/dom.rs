@@ -309,11 +309,12 @@ impl Element {
 	* *name*: Element name for this XML element (ie "body" for `<body>some text</body>`)
 	* *text*: Optional text content for this element (ie "some text" for `<body>some text</body>`)
 	* *attributes*: optional HashMap of attributes
-	* *xmlns*: optional namespace for this element
-	* *xmlns_prefix*: optional namespace prefix (if `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children)
+	* *xmlns*: optional namespace for this element. Note that this will override any xmlns definitions in the attributes
+	* *xmlns_prefix*: optional namespace prefix. If `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children. Note that this will override any xmlns definitions in the attributes
 	* *children*: optional list of child nodes to add to this element
 	 */
 	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Self {
+		// first, convert attributes to <String,String> map
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
 			None => {}
@@ -322,19 +323,21 @@ impl Element {
 					attrs.insert(k.clone().into(), v.clone().into());
 				}
 			}
-		}
+		}// next, handle children
 		let mut child_arr = match children {
 			None => Vec::new(),
 			Some(child_vec) => child_vec
 		};
+		// add text node if specified (insert as first child)
 		match text {
 			None => {}
 			Some(t) => child_arr.insert(0, Text::new(t).boxed())
 		}
+		// set the XML NS from the attributes and provided args
 		Self {
 			name: name.to_string(),
 			child_nodes: child_arr,
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None, false),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
@@ -437,9 +440,14 @@ impl Element {
 	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Self {
 		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
 	}
-	/// checks the element's attributes for xmlns definitions
-	/// Note that the default xmlns (if present) is saved as prefix ""
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<String>) -> Option<HashMap<String, String>> {
+	/** checks the element's attributes for xmlns definitions
+	Note that the default xmlns (if present) is saved as prefix ""
+	# Args
+	* attrs - kay=value pairs for the element
+	* parent_default_xmlns - inherited default namespace (or `None`)
+	* include_default - if `true`, the default namespace will be stored in the output hashmap under the key "", if `false` then the default namespace is not included in the output
+	 */
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<String>, include_default: bool) -> Option<HashMap<String, String>> {
 		// first check for default xlmns
 		let mut default_xmlns = parent_default_xmlns;
 		if attrs.contains_key("xmlns") {
@@ -465,7 +473,11 @@ impl Element {
 			// add default xmlns as "" in the prefix map
 			match default_xmlns {
 				None => {}
-				Some(def_ns) => {prefixes.insert("".to_string(), def_ns);}
+				Some(def_ns) => {
+					if include_default {
+						prefixes.insert("".to_string(), def_ns);
+					}
+				}
 			}
 			// return prefix map
 			return Some(prefixes);
@@ -473,25 +485,28 @@ impl Element {
 	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
 	pub fn name(&self) -> String {
-		todo!()
+		self.name.clone()
 	}
 	/**
 	Returns the namespace of this element, or `None` if it does not have a namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
 	 */
 	pub fn namespace(&self) -> Option<String> {
-		todo!()
+		self.xmlns.clone()
 	}
 	/**
 	Returns the default namespace of this element, or `None` if it does not have a default namespace. Default namespaces do not use prefixes and are inherited by the element's children.
 	 */
 	pub fn default_namespace(&self) -> Option<String> {
-		todo!()
+		match self.xmlns_prefix{
+			None => self.xmlns.clone(),
+			Some(_) => None
+		}
 	}
 	/**
 	Returns the prefix of this element's namespace, if it has a prefixed namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
 	 */
 	pub fn namespace_prefix(&self) -> Option<String> {
-		todo!()
+		self.xmlns_prefix.clone()
 	}
 
 	/**
@@ -525,7 +540,7 @@ impl Element {
 	```
 	 */
 	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> Iter<Element>{
-		todo!()
+		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).into()
 	}
 	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
 
@@ -560,7 +575,7 @@ impl Element {
 	```
 	 */
 	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> IterMut<Element>{
-		todo!()
+		self.child_elements_mut().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).into()
 	}
 	/**
 	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
@@ -592,7 +607,7 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> Iter<Element>{
-		todo!()
+		self.child_elements().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
 	}
 	/**
 	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
@@ -627,11 +642,15 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> IterMut<Element>{
-		todo!()
+		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
 	}
-	/** Gets any and all xmlns prefixes defined in this element */
-	fn namespace_prefixes(&self) -> &Option<HashMap<String, String>> {todo!()}
+	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace) */
+	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
+		let this_context = Self::xmlns_context_from_attributes(&self.attributes, None, false);
+	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
+	fn get_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) ->  { todo!()}
+	/** Sets any and all xmlns prefixes relevant to this element. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
 	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) -> Iter<Element>{
