@@ -648,10 +648,10 @@ impl Element {
 	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
 		let this_context = Self::xmlns_context_from_attributes(&self.attributes, None, false);
 	}
-	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
-	fn get_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) ->  { todo!()}
-	/** Sets any and all xmlns prefixes relevant to this element. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree*/
-	fn set_namespace_context(&mut self, parent_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
+	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. Default namespace is stored under the "" key in the hash map. */
+	fn get_namespace_context(&mut self) -> &HashMap<String, String> { todo!()}
+	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
+	fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) -> Iter<Element>{
 		todo!()
