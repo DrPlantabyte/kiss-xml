@@ -323,25 +323,27 @@ impl Element {
 					attrs.insert(k.clone().into(), v.clone().into());
 				}
 			}
-		}// next, handle children
-		let mut child_arr = match children {
-			None => Vec::new(),
-			Some(child_vec) => child_vec
-		};
-		// add text node if specified (insert as first child)
-		match text {
-			None => {}
-			Some(t) => child_arr.insert(0, Text::new(t).boxed())
 		}
 		// set the XML NS from the attributes and provided args
-		Self {
+		let mut elem = Self {
 			name: name.to_string(),
-			child_nodes: child_arr,
+			child_nodes: Vec::new(),
 			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None, false),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
+		};
+		// finally, add children
+		// (using the append*(...) functions in case of default namespace inheritance)
+		match text {
+			None => {}
+			Some(t) => elem.append(Text::new(t))
 		}
+		match children {
+			None => {},
+			Some(child_vec) => elem.append_all(child_vec)
+		};
+		return elem;
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
@@ -540,7 +542,7 @@ impl Element {
 	```
 	 */
 	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> Iter<Element>{
-		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).into()
+		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).collect::<Vec<Element>>().iter()
 	}
 	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
 
@@ -644,29 +646,61 @@ impl Element {
 	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> IterMut<Element>{
 		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
 	}
-	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace) */
+	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
-		let this_context = Self::xmlns_context_from_attributes(&self.attributes, None, false);
+		Self::xmlns_context_from_attributes(&self.attributes, None, false)
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. Default namespace is stored under the "" key in the hash map. */
-	fn get_namespace_context(&mut self) -> &HashMap<String, String> { todo!()}
+	fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
 	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) { todo!()}
+	fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
+		// inherit default namespace unless this element also defines one
+		match self.xmlns_prefix {
+			None => {
+				match self.default_namespace() {
+					None => self.xmlns = parent_default_namespace,
+					Some(_) => {/* do nothing */}
+				}
+			}
+			Some(_) => {/* do nothing */}
+		}
+		// add prefixed namespaces (except where already defined locally)
+		match parent_prefixes{
+			None => {}
+			Some(prefixes) => {
+				if self.xmlns_context.is_none() {
+					self.xmlns_context = Some(HashMap::new())
+				}
+				let context = &mut self.xmlns_context.expect("logic error");
+				for (prefix, ns) in prefixes {
+					if ! context.contains_key(prefix.as_str()) {
+						context.insert(prefix, ns);
+					}
+				}
+			}
+		}
+	}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) -> Iter<Element>{
-		todo!()
+		self.child_nodes.iter()
+			.filter(|n| n.is_element())
+			.map(|n| n.as_element().expect("logic error"))
+			.into()
 	}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements_mut(&mut self) -> IterMut<Element>{
-		todo!()
+		self.child_nodes.iter_mut()
+			.filter(|n| n.is_element())
+			.map(|n| n.as_element_mut().expect("logic error"))
+			.into()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children(&self) -> Iter<Box<dyn Node>>{
-		todo!()
+		self.child_nodes.iter()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children_mut(&mut self) -> IterMut<Box<dyn Node>>{
-		todo!()
+		self.child_nodes.iter_mut()
 	}
 
 	/** Deletes all child nodes from this element */
