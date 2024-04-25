@@ -610,7 +610,7 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) ->  impl Iterator<Item = &Element>{
-		self.child_elements().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
+		self.child_elements().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string()))
 	}
 	/**
 	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
@@ -645,7 +645,7 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) ->  impl Iterator<Item = &mut Element>{
-		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
+		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string()))
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
@@ -686,14 +686,12 @@ impl Element {
 		self.child_nodes.iter()
 			.filter(|n| n.is_element())
 			.map(|n| n.as_element().expect("logic error"))
-			.into()
 	}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements_mut(&mut self) ->  impl Iterator<Item = &mut Element>{
 		self.child_nodes.iter_mut()
 			.filter(|n| n.is_element())
 			.map(|n| n.as_element_mut().expect("logic error"))
-			.into()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
