@@ -44,7 +44,6 @@ use std::fs;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use std::slice::{Iter, IterMut};
 use std::str::FromStr;
 use crate::errors::*;
 
@@ -83,13 +82,13 @@ Full constructor with required root element and optional XML declaration and opt
 	/**
 	Returns a list of any and all DTDs for this Document as an iterator
 	 */
-	pub fn doctype_defs(&self) -> Iter<DTD> {
+	pub fn doctype_defs(&self) -> impl Iterator<Item = &DTD> {
 		self.dtds.iter()
 	}
 	/**
 	Returns a list of any and all DTDs for this Document as an iterator
 	 */
-	pub fn doctype_defs_mut(&mut self) -> IterMut<DTD> {
+	pub fn doctype_defs_mut(&mut self) -> impl Iterator<Item = &mut DTD> {
 		self.dtds.iter_mut()
 	}
 	/**
@@ -610,7 +609,7 @@ impl Element {
 		Ok(())
 	}
 	 */
-	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> Iter<Element>{
+	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) ->  impl Iterator<Item = &Element>{
 		self.child_elements().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
 	}
 	/**
@@ -645,7 +644,7 @@ impl Element {
 		Ok(())
 	}
 	 */
-	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> IterMut<Element>{
+	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) ->  impl Iterator<Item = &mut Element>{
 		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string())).into()
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
@@ -683,25 +682,25 @@ impl Element {
 		}
 	}
 	/** Returns a list of al child elements as an iterator */
-	pub fn child_elements(&self) -> Iter<Element>{
+	pub fn child_elements(&self) ->  impl Iterator<Item = &Element>{
 		self.child_nodes.iter()
 			.filter(|n| n.is_element())
 			.map(|n| n.as_element().expect("logic error"))
 			.into()
 	}
 	/** Returns a list of al child elements as an iterator */
-	pub fn child_elements_mut(&mut self) -> IterMut<Element>{
+	pub fn child_elements_mut(&mut self) ->  impl Iterator<Item = &mut Element>{
 		self.child_nodes.iter_mut()
 			.filter(|n| n.is_element())
 			.map(|n| n.as_element_mut().expect("logic error"))
 			.into()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children(&self) -> Iter<Box<dyn Node>>{
+	pub fn children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
 		self.child_nodes.iter()
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children_mut(&mut self) -> IterMut<Box<dyn Node>>{
+	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>>{
 		self.child_nodes.iter_mut()
 	}
 
@@ -760,14 +759,14 @@ impl Element {
 
 		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
 	 */
-	pub fn elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
+	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		todo!()
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
 		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
 	 */
-	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
+	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		todo!()
 	}
 	/** Gets the attributes for this element as a `HashMap` */
@@ -821,7 +820,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: P) -> Iter<Box<dyn Node>> where P: FnMut(&dyn Node) -> bool {
+	pub fn search<P>(&self, predicate: P) -> impl Iterator<Item = &Box<dyn Node>> where P: FnMut(&dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
@@ -854,7 +853,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: P) -> IterMut<Box<dyn Node>> where P: FnMut(&mut dyn Node) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Box<dyn Node>> where P: FnMut(&mut dyn Node) -> bool {
 		// recursive
 		todo!()
 	}
@@ -887,7 +886,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<P>(&self, predicate: P) -> Iter<Element> where P: FnMut(&Element) -> bool {
+	pub fn search_elements<P>(&self, predicate: P) ->  impl Iterator<Item = &Element> where P: FnMut(&Element) -> bool {
 		// recursive
 		todo!()
 	}
@@ -920,7 +919,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements_mut<P>(&mut self, predicate: P) -> IterMut<Element> where P: FnMut(&Element) -> bool {
+	pub fn search_elements_mut<P>(&mut self, predicate: P) ->  impl Iterator<Item = &mut Element> where P: FnMut(&Element) -> bool {
 		// recursive
 		todo!()
 	}
@@ -953,7 +952,7 @@ impl Element {
 	}
 	```
  	*/
-	pub fn search_elements_by_name(&self, name: impl Into<String>) -> Iter<Element>{
+	pub fn search_elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		// recursive
 		todo!()
 	}
@@ -988,28 +987,28 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) -> IterMut<Element>{
+	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		// recursive
 		todo!()
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<P>(&self, predicate: P) -> Iter<Text> where P: FnMut(&Text) -> bool {
+	pub fn search_text<P>(&self, predicate: P) -> impl Iterator<Item = &Text> where P: FnMut(&Text) -> bool {
 		// recursive
 		todo!()
 	}
 
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text_mut<P>(&mut self, predicate: P) -> IterMut<Text> where P: FnMut(&Text) -> bool {
+	pub fn search_text_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Text> where P: FnMut(&Text) -> bool {
 		// recursive
 		todo!()
 	}
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments<P>(&self, predicate: P) -> Iter<Comment> where P: FnMut(&Comment) -> bool {
+	pub fn search_comments<P>(&self, predicate: P) -> impl Iterator<Item = &Comment> where P: FnMut(&Comment) -> bool {
 		// recursive
 		todo!()
 	}
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments_mut<P>(&mut self, predicate: P) -> IterMut<Comment> where P: FnMut(&Comment) -> bool {
+	pub fn search_comments_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Comment> where P: FnMut(&Comment) -> bool {
 		// recursive
 		todo!()
 	}
