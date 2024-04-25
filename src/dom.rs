@@ -542,7 +542,8 @@ impl Element {
 	```
 	 */
 	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> impl Iterator<Item = &Element>{
-		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string()))
+		let ns = namespace.map(|s| s.to_string());
+		self.child_elements().filter(move |c| c.xmlns == ns)
 	}
 	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
 
@@ -577,7 +578,8 @@ impl Element {
 	```
 	 */
 	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> impl Iterator<Item = &mut Element>{
-		self.child_elements_mut().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).into()
+		let ns = namespace.map(|s| s.to_string());
+		self.child_elements_mut().filter(move |c| c.xmlns == ns)
 	}
 	/**
 	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
