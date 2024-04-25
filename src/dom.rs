@@ -541,8 +541,8 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> Iter<Element>{
-		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).collect::<Vec<Element>>().iter()
+	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> impl Iterator<Item = &Element>{
+		self.child_elements().filter(|c| c.xmlns == namespace.map(|s| s.to_string()))
 	}
 	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
 
@@ -576,7 +576,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> IterMut<Element>{
+	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> impl Iterator<Item = &mut Element>{
 		self.child_elements_mut().filter(|c| c.xmlns == namespace.map(|s| s.to_string())).into()
 	}
 	/**
