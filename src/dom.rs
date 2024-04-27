@@ -610,7 +610,8 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) ->  impl Iterator<Item = &Element>{
-		self.child_elements().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string()))
+		let pfx = prefix.map(|p| p.to_string());
+		self.child_elements().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/**
 	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
@@ -645,7 +646,8 @@ impl Element {
 	}
 	 */
 	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) ->  impl Iterator<Item = &mut Element>{
-		self.child_elements_mut().filter(|c| c.xmlns_prefix == prefix.map(|s| s.to_string()))
+		let pfx = prefix.map(|p| p.to_string());
+		self.child_elements_mut().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
@@ -758,14 +760,16 @@ impl Element {
 		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
 	 */
 	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
-		todo!()
+		let n: String = name.into();
+		self.child_elements().filter(move |c| c.name == n)
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
 		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
 	 */
 	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
-		todo!()
+		let n: String = name.into();
+		self.child_elements_mut().filter(move |c| c.name == n)
 	}
 	/** Gets the attributes for this element as a `HashMap` */
 	pub fn attributes(&self) -> &HashMap<String, String> {
@@ -818,9 +822,21 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: P) -> impl Iterator<Item = &Box<dyn Node>> where P: FnMut(&dyn Node) -> bool {
+	pub fn search<P>(&self, predicate: &P) -> impl Iterator<Item = &&Box<dyn Node>> where P: FnMut(&Box<dyn Node>) -> bool {
 		// recursive
-		todo!()
+		let mut accumulator: Vec<&Box<dyn Node>> = Vec::new();
+		for n in &self.child_nodes {
+			if predicate(n) {
+				accumulator.push(n);
+			}
+			if n.is_element() {
+				let e = n.as_element().expect("logic error");
+				for m in e.search(predicate) {
+					accumulator.push(*m);
+				}
+			}
+		}
+		return accumulator.iter()
 	}
 	/**
 	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
@@ -851,9 +867,21 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Box<dyn Node>> where P: FnMut(&mut dyn Node) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: &P) -> impl Iterator<Item = &mut Box<dyn Node>> where P: FnMut(&mut Box<dyn Node>) -> bool {
 		// recursive
-		todo!()
+		let mut accumulator: Vec<&mut Box<dyn Node>> = Vec::new();
+		for n in &mut self.child_nodes {
+			if predicate(n) {
+				accumulator.push(n);
+			}
+			if n.is_element() {
+				let mut e = n.as_element_mut().expect("logic error");
+				for m in e.search_mut(predicate) {
+					accumulator.push(m);
+				}
+			}
+		}
+		return accumulator.iter_mut()
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
