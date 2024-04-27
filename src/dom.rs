@@ -822,21 +822,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: &P) -> impl Iterator<Item = &&Box<dyn Node>> where P: FnMut(&Box<dyn Node>) -> bool {
+	pub fn search<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Box<dyn Node>>> where P: FnMut(&&Box<dyn Node>) -> bool {
 		// recursive
-		let mut accumulator: Vec<&Box<dyn Node>> = Vec::new();
-		for n in &self.child_nodes {
-			if predicate(n) {
-				accumulator.push(n);
-			}
-			if n.is_element() {
-				let e = n.as_element().expect("logic error");
-				for m in e.search(predicate) {
-					accumulator.push(*m);
-				}
-			}
-		}
-		return accumulator.iter()
+		Box::new(
+			self.child_nodes.iter().filter(predicate)
+				.chain(self.child_elements().map(|e| e.search(predicate)).flatten())
+		)
 	}
 	/**
 	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
@@ -867,21 +858,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: &P) -> impl Iterator<Item = &mut Box<dyn Node>> where P: FnMut(&mut Box<dyn Node>) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>>> where P: FnMut(&mut Box<dyn Node>) -> bool {
 		// recursive
-		let mut accumulator: Vec<&mut Box<dyn Node>> = Vec::new();
-		for n in &mut self.child_nodes {
-			if predicate(n) {
-				accumulator.push(n);
-			}
-			if n.is_element() {
-				let mut e = n.as_element_mut().expect("logic error");
-				for m in e.search_mut(predicate) {
-					accumulator.push(m);
-				}
-			}
-		}
-		return accumulator.iter_mut()
+		Box::new(
+			self.child_nodes.iter_mut().filter(predicate)
+				.chain(self.child_elements_mut().map(|e| e.search_mut(predicate)).flatten())
+		)
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
@@ -912,9 +894,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<P>(&self, predicate: P) ->  impl Iterator<Item = &Element> where P: FnMut(&Element) -> bool {
+	pub fn search_elements<P>(&self, predicate: &P) ->  Box<dyn Iterator<Item = &Element>> where P: FnMut(&Element) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_elements().filter(predicate)
+				.chain(self.child_elements().map(|e| e.search_elements(predicate)).flatten())
+		)
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
@@ -945,9 +930,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements_mut<P>(&mut self, predicate: P) ->  impl Iterator<Item = &mut Element> where P: FnMut(&Element) -> bool {
+	pub fn search_elements_mut<P>(&mut self, predicate: &P) ->  Box<dyn Iterator<Item = &mut Element>> where P: Fn(&&mut Element) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_elements_mut().filter(predicate)
+				.chain(self.child_elements_mut().map(|e| e.search_elements_mut(predicate)).flatten())
+		)
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
@@ -980,7 +968,8 @@ impl Element {
  	*/
 	pub fn search_elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		// recursive
-		todo!()
+		let n: String = name.into();
+		self.search_elements(& move |e| e.name() == n)
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
@@ -1015,12 +1004,19 @@ impl Element {
 	 */
 	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		// recursive
-		todo!()
+		let n: String = name.into();
+		self.search_elements_mut(& move |e| e.name() == n)
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<P>(&self, predicate: P) -> impl Iterator<Item = &Text> where P: FnMut(&Text) -> bool {
+	pub fn search_text<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Text>> where P: FnMut(&Text) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_nodes.iter()
+				.filter(|n| n.is_text())
+				.map(|n| n.as_text().expect("logic error"))
+				.filter(predicate)
+				.chain(self.child_elements().map(|e| e.search_text(predicate)).flatten())
+		)
 	}
 
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
