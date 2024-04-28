@@ -832,44 +832,11 @@ impl Element {
 				).filter(predicate)
 		)
 	}
-	/**
-	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
-
-	# Example
-	```rust
-	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use kiss_xml;
-		use kiss_xml::dom::*;
-		let mut library = kiss_xml::parse_str(r#"<root>
-			<books>
-				<asian>
-					<book genre="fantasy" count="1">Journey to the West</book>
-				</asian>
-				<european>
-					<book genre="fantasy" count="1">The Lord of the Rings</book>
-					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
-				</european>
-			</books>
-		</root>"#)?;
-		// set count to "0" for all of the fantasy books
-		for fantasy_book in library.root_element.search_mut(
-			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some("fantasy")
-		){
-			fantasy_book.as_element()?.set_attr("count", "0")
-		}
-		Ok(())
-	}
-	```
+	/*
+	NOTE: cannot do recursive mutable iterator (imagine if the iterator has both
+	 parent and child elements in it and the user called `remove_all()` on the
+	 parent element before reaching the child element)
 	 */
-	pub fn search_mut<'a, P>(&'a mut self, predicate: P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>> + '_> where P: FnMut(&&mut Box<dyn Node>) -> bool +'a {
-		let i1 = self.child_elements_mut();
-		let i2 = i1.map(|e| e.child_nodes.iter_mut()).flatten();
-
-		// recursive
-		Box::new(
-			i1.chain(i2).filter(predicate)
-		)
-	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
 
@@ -909,44 +876,6 @@ impl Element {
 		)
 	}
 	/**
-	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
-
-	# Example
-	```rust
-	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use kiss_xml;
-		use kiss_xml::dom::*;
-		let mut library = kiss_xml::parse_str(r#"<root>
-			<books>
-				<asian>
-					<book genre="fantasy" count="1">Journey to the West</book>
-				</asian>
-				<european>
-					<book genre="fantasy" count="1">The Lord of the Rings</book>
-					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
-				</european>
-			</books>
-		</root>"#)?;
-		// set count to "0" for all of the fantasy books
-		for fantasy_book in library.root_element.search_elements_mut(
-			|e| e.get_attr("genre") == Some("fantasy")
-		){
-			fantasy_book.set_attr("count", "0")
-		}
-		Ok(())
-	}
-	```
-	 */
-	pub fn search_elements_mut<'a, P>(&'a mut self, predicate: P) ->  Box<dyn Iterator<Item = &mut Element> + '_> where P: FnMut(&&mut Element) -> bool + 'a {
-		// recursive
-		Box::new(
-			self.child_elements_mut()
-				.chain(
-					self.child_elements_mut().map(|e| e.child_elements_mut()).flatten()
-				).filter(predicate)
-		)
-	}
-	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
 
 	# Example
@@ -980,85 +909,23 @@ impl Element {
 		let n: String = name.into();
 		self.search_elements(move |e| e.name() == n)
 	}
-	/**
-	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
-
-	# Example
-	```rust
-	fn main() -> Result<(), Box<dyn std::error::Error>> {
-		use kiss_xml;
-		use kiss_xml::dom::*;
-		let mut library = kiss_xml::parse_str(r#"<root>
-			<books>
-				<asian>
-					<book genre="fantasy" count="1">Journey to the West</book>
-				</asian>
-				<european>
-					<book genre="fantasy" count="1">The Lord of the Rings</book>
-					<book genre="sci-fi" count="1">The Hitchhiker's Guide to the Galaxy</book>
-				</european>
-			</books>
-		</root>"#)?;
-		// set count to "0" for all of the fantasy books
-		for book in library.root_element.search_elements_by_name_mut(
-			"book"
-		){
-			if book.get_attr("genre") == Some("fantasy") {
-				book.set_attr("count", "0");
-			}
-		}
-		Ok(())
-	}
-	```
-	 */
-	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
-		// recursive
-		let n: String = name.into();
-		self.search_elements_mut(move |e| e.name() == n)
-	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Text>> where P: Fn(&&Text) -> bool {
+	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Text> + '_> where P: Fn(&&Text) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_nodes.iter()
-				.filter(|n| n.is_text())
-				.map(|n| n.as_text().expect("logic error"))
-				.filter(predicate)
-				.chain(self.child_elements().map(|e| e.search_text(predicate)).flatten())
+			self.search_elements(|n| n.is_text())
+			.map(|n| n.as_text().expect("logic error"))
+			.filter(predicate)
 		)
 	}
 
-	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Text>> where P: Fn(&&mut Text) -> bool {
-		// recursive
-		Box::new(
-			self.child_nodes.iter_mut()
-				.filter(|n| n.is_text())
-				.map(|n| n.as_text_mut().expect("logic error"))
-				.filter(predicate)
-				.chain(self.child_elements_mut().map(|e| e.search_text_mut(predicate)).flatten())
-		)
-	}
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Comment>> where P: Fn(&&Comment) -> bool {
+	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Comment> + '_> where P: Fn(&&Comment) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_nodes.iter()
-				.filter(|n| n.is_comment())
+			self.search_elements(|n| n.is_comment())
 				.map(|n| n.as_comment().expect("logic error"))
 				.filter(predicate)
-				.chain(self.child_elements().map(|e| e.search_comments(predicate)).flatten())
-		)
-	}
-	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Comment>> where P: Fn(&&mut Comment) -> bool {
-		// recursive
-		Box::new(
-			self.child_nodes.iter_mut()
-				.filter(|n| n.is_comment())
-				.map(|n| n.as_comment_mut().expect("logic error"))
-				.filter(predicate)
-				.chain(self.child_elements_mut().map(|e| e.search_comments_mut(predicate)).flatten())
 		)
 	}
 	/**
