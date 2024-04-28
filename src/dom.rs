@@ -822,7 +822,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Box<dyn Node>>> where P: FnMut(&&Box<dyn Node>) -> bool {
+	pub fn search<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Box<dyn Node>>> where P: Fn(&&Box<dyn Node>) -> bool {
 		// recursive
 		Box::new(
 			self.child_nodes.iter().filter(predicate)
@@ -858,7 +858,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>>> where P: FnMut(&mut Box<dyn Node>) -> bool {
+	pub fn search_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>>> where P: Fn(&&mut Box<dyn Node>) -> bool {
 		// recursive
 		Box::new(
 			self.child_nodes.iter_mut().filter(predicate)
@@ -894,7 +894,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<P>(&self, predicate: &P) ->  Box<dyn Iterator<Item = &Element>> where P: FnMut(&Element) -> bool {
+	pub fn search_elements<P>(&self, predicate: &P) ->  Box<dyn Iterator<Item = &Element>> where P: Fn(&&Element) -> bool {
 		// recursive
 		Box::new(
 			self.child_elements().filter(predicate)
@@ -1008,7 +1008,7 @@ impl Element {
 		self.search_elements_mut(& move |e| e.name() == n)
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Text>> where P: FnMut(&Text) -> bool {
+	pub fn search_text<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Text>> where P: Fn(&&Text) -> bool {
 		// recursive
 		Box::new(
 			self.child_nodes.iter()
@@ -1020,19 +1020,37 @@ impl Element {
 	}
 
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Text> where P: FnMut(&Text) -> bool {
+	pub fn search_text_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Text>> where P: Fn(&&mut Text) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_nodes.iter_mut()
+				.filter(|n| n.is_text())
+				.map(|n| n.as_text_mut().expect("logic error"))
+				.filter(predicate)
+				.chain(self.child_elements_mut().map(|e| e.search_text_mut(predicate)).flatten())
+		)
 	}
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments<P>(&self, predicate: P) -> impl Iterator<Item = &Comment> where P: FnMut(&Comment) -> bool {
+	pub fn search_comments<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Comment>> where P: Fn(&&Comment) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_nodes.iter()
+				.filter(|n| n.is_comment())
+				.map(|n| n.as_comment().expect("logic error"))
+				.filter(predicate)
+				.chain(self.child_elements().map(|e| e.search_comments(predicate)).flatten())
+		)
 	}
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments_mut<P>(&mut self, predicate: P) -> impl Iterator<Item = &mut Comment> where P: FnMut(&Comment) -> bool {
+	pub fn search_comments_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Comment>> where P: Fn(&&mut Comment) -> bool {
 		// recursive
-		todo!()
+		Box::new(
+			self.child_nodes.iter_mut()
+				.filter(|n| n.is_comment())
+				.map(|n| n.as_comment_mut().expect("logic error"))
+				.filter(predicate)
+				.chain(self.child_elements_mut().map(|e| e.search_comments_mut(predicate)).flatten())
+		)
 	}
 	/**
 	Appends the given node to the children of this element.
@@ -1104,12 +1122,12 @@ impl Element {
 		todo!()
 	}
 	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes. */
-	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: FnMut(&dyn Node) -> bool {
+	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: Fn(&dyn Node) -> bool {
 		// recursive, returns count
 		todo!()
 	}
 	/** Recursively removes all child elements matching the given predicate function, returning the number of removed elements. */
-	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: FnMut(&Element) -> bool {
+	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
 		// recursive, returns count
 		todo!()
 	}
@@ -1120,7 +1138,7 @@ impl Element {
 	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
 	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
-	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: FnMut(&Element) -> bool {
+	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
 		// returns count
 		todo!()
 	}
