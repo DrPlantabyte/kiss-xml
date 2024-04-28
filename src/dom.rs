@@ -705,9 +705,12 @@ impl Element {
 	}
 
 	/** Deletes all child nodes from this element */
-	pub fn clear_children(&mut self) {todo!()}
+	pub fn clear_children(&mut self) {self.child_nodes.clear()}
 	/** Replaces this element's content (children) with the given text. **This will delete any child elements and comments from this element!** */
-	pub fn set_text(&mut self, text: impl Into<String>) {todo!()}
+	pub fn set_text(&mut self, text: impl Into<String>) {
+		self.clear_children();
+		self.append(Text::new(text));
+	}
 	/**
 	Gets the first child element with the given element name. If no such element exists, `None` is returned.
 
@@ -731,7 +734,13 @@ impl Element {
 	```
 	 */
 	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
-		todo!()
+		let n: String = name.into();
+		for e in self.child_elements() {
+			if e.name() == n {
+				return Some(e);
+			}
+		}
+		None
 	}
 	/**
 	Gets the first child element with the given element name as a mutable reference. If no such element exists, `None` is returned.
@@ -753,7 +762,13 @@ impl Element {
 	```
 	 */
 	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
-		todo!()
+		let n: String = name.into();
+		for e in self.child_elements_mut() {
+			if e.name() == n {
+				return Some(e);
+			}
+		}
+		None
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
@@ -773,26 +788,32 @@ impl Element {
 	}
 	/** Gets the attributes for this element as a `HashMap` */
 	pub fn attributes(&self) -> &HashMap<String, String> {
-		todo!()
+		&self.attributes
 	}
 	/** Gets the attributes for this element as a `HashMap` */
 	pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
-		todo!()
+		&mut self.attributes
 	}
 	/** Gets the value of an attribute for this Element by name. If there is no such attribute, `None` is returned */
-	pub fn get_attr(&self, attr_name: impl Into<String>) -> Option<String> {
-		todo!()
+	pub fn get_attr(&self, attr_name: impl Into<String>) -> Option<&String> {
+		let n: String = attr_name.into();
+		self.attributes.get(&n)
 	}
 	/** Sets the value of an attribute for this Element by name. */
 	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) {
-		todo!()
+		let n: String = attr_name.into();
+		let v: String = value.into();
+		self.attributes.insert(n, v);
 	}
 	/** Deletes an attribute from this element */
 	pub fn remove_attr(&mut self, attr_name: impl Into<String>) -> Option<String> {
-		todo!()
+		let n: String = attr_name.into();
+		self.attributes.remove(&n)
 	}
 	/** Deletes all attributes from this element */
-	pub fn clear_attributes(&mut self) {todo!()}
+	pub fn clear_attributes(&mut self) {
+		self.attributes.clear()
+	}
 	/**
 	Performs a recursive search of all child nodes of this element (and all children of child elements, etc), returning an iterator of all nodes matching the given predicate.
 
