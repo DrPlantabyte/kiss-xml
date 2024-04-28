@@ -971,8 +971,14 @@ impl Element {
 	```
 	 */
 	pub fn append(&mut self, node: impl Node) {
-		todo!()
-		// TODO: if this is an element, set the namespace context
+		// Note: if this is an element, set the namespace context
+		if node.is_element() {
+			let mut e = node.as_element().expect("logic error").clone();
+			e.set_namespace_context(self.default_namespace(), self.get_namespace_context());
+			self.child_nodes.push(Box::new(e));
+		} else {
+			self.child_nodes.push(Box::new(node));
+		}
 	}
 	/**
 	Appends multiple child nodes to the current element.
