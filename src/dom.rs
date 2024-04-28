@@ -674,7 +674,7 @@ impl Element {
 				if self.xmlns_context.is_none() {
 					self.xmlns_context = Some(HashMap::new())
 				}
-				let context = &mut self.xmlns_context.expect("logic error");
+				let context = &mut self.xmlns_context.clone().expect("logic error");
 				for (prefix, ns) in prefixes {
 					if ! context.contains_key(prefix.as_str()) {
 						context.insert(prefix, ns);
