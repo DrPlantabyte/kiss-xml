@@ -822,11 +822,14 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Box<dyn Node>>> where P: Fn(&&Box<dyn Node>) -> bool {
+	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_nodes.iter().filter(predicate)
-				.chain(self.child_elements().map(|e| e.search(predicate)).flatten())
+			self.child_nodes.iter()
+				.chain(
+					self.child_elements().map(|e| e.child_nodes.iter()
+					).flatten()
+				).filter(predicate)
 		)
 	}
 	/**
@@ -858,11 +861,13 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_mut<P>(&mut self, predicate: &P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>>> where P: Fn(&&mut Box<dyn Node>) -> bool {
+	pub fn search_mut<'a, P>(&'a mut self, predicate: P) -> Box<dyn Iterator<Item = &mut Box<dyn Node>> + '_> where P: FnMut(&&mut Box<dyn Node>) -> bool +'a {
+		let i1 = self.child_elements_mut();
+		let i2 = i1.map(|e| e.child_nodes.iter_mut()).flatten();
+
 		// recursive
 		Box::new(
-			self.child_nodes.iter_mut().filter(predicate)
-				.chain(self.child_elements_mut().map(|e| e.search_mut(predicate)).flatten())
+			i1.chain(i2).filter(predicate)
 		)
 	}
 	/**
@@ -894,11 +899,13 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<P>(&self, predicate: &P) ->  Box<dyn Iterator<Item = &Element>> where P: Fn(&&Element) -> bool {
+	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &Element> + '_> where P: FnMut(&&Element) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_elements().filter(predicate)
-				.chain(self.child_elements().map(|e| e.search_elements(predicate)).flatten())
+			self.child_elements()
+				.chain(
+					self.child_elements().map(|e| e.child_elements()).flatten()
+				).filter(predicate)
 		)
 	}
 	/**
@@ -930,11 +937,13 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements_mut<P>(&mut self, predicate: &P) ->  Box<dyn Iterator<Item = &mut Element>> where P: Fn(&&mut Element) -> bool {
+	pub fn search_elements_mut<'a, P>(&'a mut self, predicate: P) ->  Box<dyn Iterator<Item = &mut Element> + '_> where P: FnMut(&&mut Element) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_elements_mut().filter(predicate)
-				.chain(self.child_elements_mut().map(|e| e.search_elements_mut(predicate)).flatten())
+			self.child_elements_mut()
+				.chain(
+					self.child_elements_mut().map(|e| e.child_elements_mut()).flatten()
+				).filter(predicate)
 		)
 	}
 	/**
@@ -969,7 +978,7 @@ impl Element {
 	pub fn search_elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		// recursive
 		let n: String = name.into();
-		self.search_elements(& move |e| e.name() == n)
+		self.search_elements(move |e| e.name() == n)
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
@@ -1005,7 +1014,7 @@ impl Element {
 	pub fn search_elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		// recursive
 		let n: String = name.into();
-		self.search_elements_mut(& move |e| e.name() == n)
+		self.search_elements_mut(move |e| e.name() == n)
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
 	pub fn search_text<P>(&self, predicate: &P) -> Box<dyn Iterator<Item = &Text>> where P: Fn(&&Text) -> bool {
