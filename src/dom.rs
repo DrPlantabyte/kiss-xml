@@ -972,12 +972,18 @@ impl Element {
 	 */
 	pub fn append(&mut self, node: impl Node) {
 		// Note: if this is an element, set the namespace context
-		if node.is_element() {
-			let mut e = node.as_element().expect("logic error").clone();
-			e.set_namespace_context(self.default_namespace(), self.get_namespace_context());
-			self.child_nodes.push(Box::new(e));
-		} else {
-			self.child_nodes.push(Box::new(node));
+		let is_element = node.is_element();
+		self.child_nodes.push(node.boxed());
+		if is_element {
+			let df_xmlns = self.default_namespace().clone();
+			let xmlns_context = self.get_namespace_context().clone();
+			// update xmlns prefix context if we just added an element
+			self.child_nodes.last_mut().expect("logic error")
+				.as_element_mut().expect("logic error")
+				.set_namespace_context(
+					df_xmlns,
+					xmlns_context
+				);
 		}
 	}
 	/**
