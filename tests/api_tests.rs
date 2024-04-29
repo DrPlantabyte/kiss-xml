@@ -235,7 +235,8 @@ fn test_remove_2(){
 		.first_element_by_name_mut("mydata").unwrap()
 		.remove_elements(|e| e.name() == "meta");
 	doc.root_element_mut()
-		.remove_all_elements(|e| e.name() == "other");
+		.first_element_by_name_mut("mydata").unwrap()
+		.remove_elements(|e| e.name() == "other");
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<!--comment-->

@@ -1014,49 +1014,114 @@ impl Element {
 	```
 	 */
 	pub fn append_all(&mut self, children: Vec<Box<dyn Node>>) {
-		todo!()
-		// TODO: if child is an element, set the namespace context
+		// first add every node, keeping a record of which ones were elements
+		let mut elem_indices: Vec<usize> = Vec::with_capacity(children.len());
+		let mut i = self.child_nodes.len();
+		for child in children {
+			if child.is_element() {
+				elem_indices.push(i);
+			}
+			self.child_nodes.push(child);
+			i += 1;
+		}
+		// then apply the xmlns context to the elements
+		let df_xmlns = self.default_namespace().clone();
+		let xmlns_context = self.get_namespace_context().clone();
+		for i in elem_indices {
+			self.child_nodes[i]
+				.as_element_mut().expect("logic error (bad index)")
+				.set_namespace_context(
+					df_xmlns.clone(),
+					xmlns_context.clone()
+				)
+		}
 	}
 	/**
 	Inserts the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an error result is returned.
 	 */
 	pub fn insert(&mut self, index: usize, node: impl Node) -> Result<(), IndexOutOfBounds> {
-		todo!()
-		// TODO: if this is an element, set the namespace context
+		if index > self.child_nodes.len() {
+			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
+		}
+		// Note: if this is an element, set the namespace context
+		let is_element = node.is_element();
+		self.child_nodes.insert(index, node.boxed());
+		if is_element {
+			let df_xmlns = self.default_namespace().clone();
+			let xmlns_context = self.get_namespace_context().clone();
+			// update xmlns prefix context if we just added an element
+			self.child_nodes.get_mut(index).expect("logic error")
+				.as_element_mut().expect("logic error")
+				.set_namespace_context(
+					df_xmlns,
+					xmlns_context
+				);
+		}
+		Ok(())
 	}
 	/**
 	Removes the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an Err result is returned, otherwise the removed node is return as an Ok result.
 	 */
 	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, IndexOutOfBounds> {
-		todo!()
+		if index > self.child_nodes.len() {
+			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
+		}
+		Ok(self.child_nodes.remove(index))
 	}
-	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes. */
+	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive). */
 	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: Fn(&dyn Node) -> bool {
-		// recursive, returns count
-		todo!()
-	}
-	/** Recursively removes all child elements matching the given predicate function, returning the number of removed elements. */
-	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
-		// recursive, returns count
-		todo!()
+		let mut rm_indices: Vec<usize> = Vec::new();
+		for i in (0..self.child_nodes.len()).rev() {
+			if predicate(self.child_nodes[i].as_ref()) {
+				rm_indices.push(i);
+			}
+		}
+		let count =  rm_indices.len();
+		for i in rm_indices {
+			self.child_nodes.remove(i);
+		}
+		return count;
 	}
 	/** Removes the Nth child element from this element, returning it as a result (or an `IndexOutOfBounds` error result if the index is out of range) */
 	pub fn remove_element(&mut self, index: usize) -> Result<Element, IndexOutOfBounds> {
-		todo!()
+		// first, index the child elements
+		let mut elems: Vec<usize> = Vec::new();
+		for i in 0..self.child_nodes.len() {
+			if self.child_nodes[i].is_element(){ elems.push(i); }
+		}
+		// now remove the requested element
+		if index > elems.len() {
+			return Err(IndexOutOfBounds::new(index as isize, Some((0, elems.len() as isize))));
+		}
+		let removed = self.child_nodes.remove(elems[index]);
+		Ok(removed.as_element().expect("logic error").clone())
 	}
 	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
 	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
 	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
-		// returns count
-		todo!()
+		let mut rm_indices: Vec<usize> = Vec::new();
+		for i in (0..self.child_nodes.len()).rev() {
+			if self.child_nodes[i].is_element() {
+				if predicate(
+					self.child_nodes[i].as_element().expect("logic error")
+				) {
+					rm_indices.push(i);
+				}
+			}
+		}
+		let count =  rm_indices.len();
+		for i in rm_indices {
+			self.child_nodes.remove(i);
+		}
+		return count;
 	}
 	/** Removes all child elements matching the given element name (regardless of namespace), returning the number of removed elements.
 
 	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
 	pub fn remove_elements_by_name(&mut self, name: impl Into<String>) -> usize {
-		// returns count
-		todo!()
+		let n: String = name.into();
+		self.remove_elements(move |e| e.name == n)
 	}
 
 }
