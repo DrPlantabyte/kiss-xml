@@ -985,6 +985,21 @@ impl Element {
 					xmlns_context
 				);
 		}
+		// clean-up text nodes
+		self.cleanup_text_nodes();
+	}
+	/** Discards whitespace-only text nodes and merges sequential text nodes */
+	fn cleanup_text_nodes(&mut self) {
+		if self.child_nodes.len() == 0 {return;}
+		let mut index = self.child_nodes.len() - 1;
+		loop {
+			if self.child_nodes[index].is_text() {
+
+			}
+			if index == 0 {break;}
+			index -= 1;
+		}
+		todo!()
 	}
 	/**
 	Appends multiple child nodes to the current element.
@@ -1035,6 +1050,8 @@ impl Element {
 					xmlns_context.clone()
 				)
 		}
+		// clean-up text nodes
+		self.cleanup_text_nodes();
 	}
 	/**
 	Inserts the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an error result is returned.
@@ -1057,6 +1074,9 @@ impl Element {
 					xmlns_context
 				);
 		}
+		// clean-up text nodes
+		self.cleanup_text_nodes();
+		// done
 		Ok(())
 	}
 	/**
@@ -1241,6 +1261,10 @@ pub struct Text {
 impl Text {
 	/** Construct a new Text node from the provided string-like object */
 	pub fn new(text: impl Into<String>) -> Self {
+		todo!()
+	}
+
+	fn is_whitespace(&self) -> bool {
 		todo!()
 	}
 }
