@@ -804,7 +804,7 @@ impl Element {
 		Element::check_attr_name(n.as_str())?;
 		let v: String = value.into();
 		self.attributes.insert(n, v);
-		todo!("sanitize name")
+		Ok(())
 	}
 
 
@@ -1179,7 +1179,7 @@ impl Element {
 
 	/// Implementation of writing DOM to XML string
 	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str) -> String {
-		let mut out = String::new();
+		let mut out = String::from(prefix);
 		// tage name
 		out.push_str("<");
 		match self.namespace_prefix(){
@@ -1198,6 +1198,23 @@ impl Element {
 			out.push_str("=\"");
 			out.push_str(crate::attribute_escape(v).as_str());
 			out.push_str("\"");
+		}
+		// children (or not)
+		let child_count = self.child_nodes.len();
+		if child_count == 0 {
+			out.push_str("/>");
+		} else if child_count == 1 && !self.child_nodes[0].is_element() {
+			// single non-element child, display inline
+			out.push_str(">");
+			out.push_str(&self.child_nodes[0].to_string_with_indent(indent));
+			out.push_str("</");
+			out.push_str(self.name().as_str());
+			out.push_str(">");
+		} else {
+			// multiple children, prettify
+			for c in &self.child_nodes {
+				
+			}
 		}
 		todo!()
 	}
