@@ -1166,19 +1166,33 @@ impl Element {
 impl Node for Element {
 
 	fn text(&self) -> Option<String> {
-		todo!()
+		// Note: this is recursive
+		let mut builder = String::new();
+		for c in &self.child_nodes {
+			if c.is_text() || c.is_element() {
+				match c.text(){
+					None => {}
+					Some(txt) => builder.push_str(txt.as_str())
+				};
+			}
+		}
+		if builder.is_empty(){
+			None
+		} else {
+			Some(builder)
+		}
 	}
 
 	fn is_element(&self) -> bool {
-		todo!()
+		true
 	}
 
 	fn is_text(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn is_comment(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
