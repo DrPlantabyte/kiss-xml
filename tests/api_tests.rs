@@ -403,17 +403,17 @@ r#"<html>
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
 		vec![
-			Element::new_with_text("h1", "Chapter 1").boxed(),
+			Element::new_with_text("h1", "Chapter 1").unwrap().boxed(),
 			Comment::new("Note: there is only one chapter").boxed(),
 			Element::new_with_children("p", vec![
-				Text::new("Once upon a time, there was a little ").boxed(),
+				Text::new("Once upon a time, there was a little ").unwrap().boxed(),
 				Element::new_with_attributes_and_text(
 					"a",
 					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
 					"gnome"
 				).unwrap().boxed(),
 				Text::new(" who lived in a walnut tree...").boxed()
-			]).boxed()
+			]).unwrap().boxed()
 		]
 	);
 	// print the results

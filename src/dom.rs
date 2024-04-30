@@ -313,7 +313,9 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix. If `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children. Note that this will override any xmlns definitions in the attributes
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, InvalidAttributeName> {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, KissXmlError> {
+		// sanity check
+		Element::check_elem_name(name)?;
 		// first, convert attributes to <String,String> map
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
@@ -348,11 +350,13 @@ impl Element {
 		return Ok(elem);
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
-	pub fn new_from_name(name: &str) -> Self {
-		Self {
+	pub fn new_from_name(name: &str) -> Result<Self, KissXmlError> {
+		// sanity check
+		Element::check_elem_name(name)?;
+		Ok(Self {
 			name: name.to_string(),
 			..Default::default()
-		}
+		})
 	}
 	/** Creates a new Element with the specified name and attributes.
 	# Example
@@ -367,12 +371,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Result<Self, InvalidAttributeName> {
+	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Result<Self, KissXmlError> {
 		Self::new(name, None, Some(attributes), None, None, None)
 	}
 	/// Creates a new Element with the specified name and text content
-	pub fn new_with_text(name: &str, text: &str) -> Self {
-		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None).unwrap()
+	pub fn new_with_text(name: &str, text: &str) -> Result<Self, KissXmlError> {
+		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None)
 	}
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
@@ -391,7 +395,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Result<Self, InvalidAttributeName> {
+	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Result<Self, KissXmlError> {
 		Self::new(name, Some(text), Some(attributes), None, None, None)
 	}
 	/**
@@ -417,7 +421,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Result<Self, InvalidAttributeName> {
+	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Result<Self, KissXmlError> {
 		Self::new(name, None, Some(attributes), None, None, Some(children))
 	}
 
@@ -441,8 +445,8 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Self {
-		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children)).unwrap()
+	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Result<Self, KissXmlError> {
+		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
 	}
 	/** checks the element's attributes for xmlns definitions
 	Note that the default xmlns (if present) is saved as prefix ""
@@ -808,7 +812,7 @@ impl Element {
 	}
 
 
-
+	/// singleton regex matcher
 	const ATTR_NAME_CHECKER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 	/// Checks if an attribute name is valid
 	fn check_attr_name(name: &str) -> Result<(), InvalidAttributeName> {
@@ -820,6 +824,20 @@ impl Element {
 			Ok(())
 		} else {
 			Err(InvalidAttributeName::new(format!("'{}' is not a valid attribute name", name)))
+		}
+	}
+	/// singleton regex matcher
+	const NAME_CHECKER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+	/// Checks if an attribute name is valid
+	fn check_elem_name(name: &str) -> Result<(), InvalidElementName> {
+		let singleton = Element::NAME_CHECKER_SINGLETON;
+		let checker = singleton.get_or_init(
+			|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap()
+		);
+		if checker.is_match(name) {
+			Ok(())
+		} else {
+			Err(InvalidElementName::new(format!("'{}' is not a valid name", name)))
 		}
 	}
 	/** Deletes an attribute from this element */
@@ -1180,16 +1198,16 @@ impl Element {
 	/// Implementation of writing DOM to XML string
 	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str) -> String {
 		let mut out = String::from(prefix);
-		// tage name
-		out.push_str("<");
-		match self.namespace_prefix(){
-			None => {}
-			Some(prefix) => {
-				out.push_str(prefix.as_str());
-				out.push_str(":");
+		// tag name
+		let tag_name = match self.namespace_prefix(){
+			None => self.name.clone(),
+			Some(xmlns_prefix) => {
+				format!("{}:{}", xmlns_prefix, self.name)
 			}
-		}
-		out.push_str(self.name().as_str());
+		};
+		out.push_str("<");
+		out.push_str(tag_name.as_str());
+
 		// attributes
 		let attrs = self.attributes();
 		for (k, v) in attrs {
@@ -1212,11 +1230,38 @@ impl Element {
 			out.push_str(">");
 		} else {
 			// multiple children, prettify
+			out.push_str(">\n");
+			// prettify variables
+			let mut next_prefix = String::from(prefix);
+			next_prefix.push_str(indent);
+			let mut line_end = String::from("\n");
+			line_end.push_str(next_prefix.as_str());
 			for c in &self.child_nodes {
-				
+				if c.is_text() {
+					// indent start of each line of text
+					let text = crate::text_escape(
+						c.text().or(Some(String::new()))
+						.expect("logic error")
+					);
+					out.push_str(next_prefix.as_str());
+					out.push_str(text.replace("\n", line_end.as_str()).as_str());
+				} else if c.is_comment() {
+					// indent start of comment
+					out.push_str(next_prefix.as_str());
+					let text = c.text().or(Some(String::new())).expect("logic error");
+					out.push_str(format!("<!--{}-->", text).as_str());
+				} else {
+					// child element, recurse
+					out.push_str(c.as_element().expect("logic error").to_string_with_prefix_and_indent(next_prefix.as_str(), indent).as_str());
+				}
 			}
+			// closing tag
+			out.push_str("\n");
+			out.push_str(prefix.as_str());
+			out.push_str("</");
+			out.push_str(tag_name.as_str());
+			out.push_str(">");
 		}
-		todo!()
 	}
 
 }
@@ -1347,6 +1392,7 @@ pub struct Text {
 	pub content: String
 }
 
+/// singleton regex matcher
 const WSP_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 
 impl Text {

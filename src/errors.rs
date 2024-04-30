@@ -22,8 +22,14 @@ pub enum KissXmlError {
 	IndexOutOfBounds(IndexOutOfBounds),
 	/// This error indicates an attempt to use an attribute that is not valid
 	InvalidAttributeName(InvalidAttributeName),
+	/// This error indicates an attempt to create an element with a name that is not valid
+	InvalidElementName(InvalidElementName),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
+}
+
+impl From<std::io::Error> for KissXmlError {
+	fn from(e: std::io::Error) -> Self {KissXmlError::IOError(e)}
 }
 
 impl Display for KissXmlError {
@@ -34,7 +40,8 @@ impl Display for KissXmlError {
 			KissXmlError::DoesNotExistError(e) => write!(f, "{}", e),
 			KissXmlError::IndexOutOfBounds(e) => write!(f, "{}", e),
 			KissXmlError::InvalidAttributeName(e) => write!(f, "{}", e),
-			KissXmlError::IOError(e) => Display::fmt(&e, f),
+			KissXmlError::InvalidElementName(e) => write!(f, "{}", e),
+			KissXmlError::IOError(e) => write!(f, "{}", e),
 		}
 	}
 }
@@ -58,6 +65,10 @@ impl ParsingError{
 	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", &self.msg)
 	}
+}
+
+impl From<ParsingError> for KissXmlError {
+	fn from(e: ParsingError) -> Self {KissXmlError::ParsingError(e)}
 }
 
 impl Display for ParsingError {
@@ -86,6 +97,10 @@ impl TypeCastError{
 	}
 }
 
+impl From<TypeCastError> for KissXmlError {
+	fn from(e: TypeCastError) -> Self {KissXmlError::TypeCastError(e)}
+}
+
 impl Display for TypeCastError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "TypeCastError: {}", self.msg)
@@ -111,6 +126,10 @@ impl DoesNotExistError{
 	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", &self.msg)
 	}
+}
+
+impl From<DoesNotExistError> for KissXmlError {
+	fn from(e: DoesNotExistError) -> Self {KissXmlError::DoesNotExistError(e)}
 }
 
 impl Display for DoesNotExistError {
@@ -150,6 +169,10 @@ impl IndexOutOfBounds{
 	}
 }
 
+impl From<IndexOutOfBounds> for KissXmlError {
+	fn from(e: IndexOutOfBounds) -> Self {KissXmlError::IndexOutOfBounds(e)}
+}
+
 impl Display for IndexOutOfBounds {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		self.print(f)
@@ -158,8 +181,7 @@ impl Display for IndexOutOfBounds {
 
 impl std::error::Error for IndexOutOfBounds{}
 
-
-/// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
+/// Error indicating an attempt to add an attribute with an invalid name (eg contains a space)
 #[derive(Clone, Debug)]
 pub struct InvalidAttributeName {
 	/// The error message.
@@ -177,6 +199,10 @@ impl InvalidAttributeName{
 	}
 }
 
+impl From<InvalidAttributeName> for KissXmlError {
+	fn from(e: InvalidAttributeName) -> Self {KissXmlError::InvalidAttributeName(e)}
+}
+
 impl Display for InvalidAttributeName {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "InvalidAttributeName: {}", self.msg)
@@ -184,4 +210,34 @@ impl Display for InvalidAttributeName {
 }
 
 impl std::error::Error for InvalidAttributeName{}
+
+/// Error indicating an attempt to create an element with an invalid name (eg contains a space)
+#[derive(Clone, Debug)]
+pub struct InvalidElementName {
+	/// The error message.
+	pub msg: String
+}
+
+impl InvalidElementName{
+	/// New error with a given message
+	pub fn new(msg: impl Into<String>) -> Self {
+		Self{msg: msg.into()}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", &self.msg)
+	}
+}
+
+impl From<InvalidElementName> for KissXmlError {
+	fn from(e: InvalidElementName) -> Self {KissXmlError::InvalidElementName(e)}
+}
+
+impl Display for InvalidElementName {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "InvalidElementName: {}", self.msg)
+	}
+}
+
+impl std::error::Error for InvalidElementName{}
 
