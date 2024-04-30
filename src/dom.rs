@@ -313,14 +313,16 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix. If `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children. Note that this will override any xmlns definitions in the attributes
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Self {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, InvalidAttributeName> {
 		// first, convert attributes to <String,String> map
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
 			None => {}
 			Some(attr_map) => {
 				for (k, v) in attr_map.iter() {
-					attrs.insert(k.clone().into(), v.clone().into());
+					let n: String = k.clone().into();
+					Element::check_attr_name(n.as_str())?;
+					attrs.insert(n, v.clone().into());
 				}
 			}
 		}
@@ -343,7 +345,7 @@ impl Element {
 			None => {},
 			Some(child_vec) => elem.append_all(child_vec)
 		};
-		return elem;
+		return Ok(elem);
 	}
 	/// Creates a new Element with the specified name and not attributes or content.
 	pub fn new_from_name(name: &str) -> Self {
@@ -365,12 +367,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Self {
+	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Result<Self, InvalidAttributeName> {
 		Self::new(name, None, Some(attributes), None, None, None)
 	}
 	/// Creates a new Element with the specified name and text content
 	pub fn new_with_text(name: &str, text: &str) -> Self {
-		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None)
+		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None).unwrap()
 	}
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
@@ -389,7 +391,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Self {
+	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Result<Self, InvalidAttributeName> {
 		Self::new(name, Some(text), Some(attributes), None, None, None)
 	}
 	/**
@@ -415,7 +417,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Self {
+	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Result<Self, InvalidAttributeName> {
 		Self::new(name, None, Some(attributes), None, None, Some(children))
 	}
 
@@ -440,7 +442,7 @@ impl Element {
 	```
 	 */
 	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Self {
-		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
+		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children)).unwrap()
 	}
 	/** checks the element's attributes for xmlns definitions
 	Note that the default xmlns (if present) is saved as prefix ""
@@ -791,21 +793,34 @@ impl Element {
 	pub fn attributes(&self) -> &HashMap<String, String> {
 		&self.attributes
 	}
-	/** Gets the attributes for this element as a `HashMap` */
-	pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
-		&mut self.attributes
-	}
 	/** Gets the value of an attribute for this Element by name. If there is no such attribute, `None` is returned */
 	pub fn get_attr(&self, attr_name: impl Into<String>) -> Option<&String> {
 		let n: String = attr_name.into();
 		self.attributes.get(&n)
 	}
 	/** Sets the value of an attribute for this Element by name. */
-	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) {
+	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) -> Result<(), InvalidAttributeName> {
 		let n: String = attr_name.into();
+		Element::check_attr_name(n.as_str())?;
 		let v: String = value.into();
 		self.attributes.insert(n, v);
 		todo!("sanitize name")
+	}
+
+
+
+	const ATTR_NAME_CHECKER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+	/// Checks if an attribute name is valid
+	fn check_attr_name(name: &str) -> Result<(), InvalidAttributeName> {
+		let singleton = Element::ATTR_NAME_CHECKER_SINGLETON;
+		let checker = singleton.get_or_init(
+			|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap()
+		);
+		if checker.is_match(name) {
+			Ok(())
+		} else {
+			Err(InvalidAttributeName::new(format!("'{}' is not a valid attribute name", name)))
+		}
 	}
 	/** Deletes an attribute from this element */
 	pub fn remove_attr(&mut self, attr_name: impl Into<String>) -> Option<String> {

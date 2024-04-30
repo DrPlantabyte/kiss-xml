@@ -20,6 +20,8 @@ pub enum KissXmlError {
 	DoesNotExistError(DoesNotExistError),
 	/// This error indicates that the user requested an invalid index in a collection or slice
 	IndexOutOfBounds(IndexOutOfBounds),
+	/// This error indicates an attempt to use an attribute that is not valid
+	InvalidAttributeName(InvalidAttributeName),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
@@ -31,6 +33,7 @@ impl Display for KissXmlError {
 			KissXmlError::TypeCastError(e) => write!(f, "{}", e),
 			KissXmlError::DoesNotExistError(e) => write!(f, "{}", e),
 			KissXmlError::IndexOutOfBounds(e) => write!(f, "{}", e),
+			KissXmlError::InvalidAttributeName(e) => write!(f, "{}", e),
 			KissXmlError::IOError(e) => Display::fmt(&e, f),
 		}
 	}
@@ -154,4 +157,31 @@ impl Display for IndexOutOfBounds {
 }
 
 impl std::error::Error for IndexOutOfBounds{}
+
+
+/// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
+#[derive(Clone, Debug)]
+pub struct InvalidAttributeName {
+	/// The error message.
+	pub msg: String
+}
+
+impl InvalidAttributeName{
+	/// New error with a given message
+	pub fn new(msg: impl Into<String>) -> Self {
+		Self{msg: msg.into()}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", &self.msg)
+	}
+}
+
+impl Display for InvalidAttributeName {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "InvalidAttributeName: {}", self.msg)
+	}
+}
+
+impl std::error::Error for InvalidAttributeName{}
 

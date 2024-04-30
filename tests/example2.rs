@@ -22,7 +22,7 @@ fn example1() {
 			("style", "fill:#ff0000;fill-opacity:0.5;stroke:none"),
 			("d", "M 25,25 25,75 75,75, 75,25 Z"),
 			("id", "square")
-		])));
+		])).unwrap());
 	// print the new modified SVG XML
 	println!("{}", doc.to_string())
 }
