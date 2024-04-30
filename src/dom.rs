@@ -137,7 +137,7 @@ Produces the XML text representing this XML DOM using the default indent of two 
 			builder.push_str(dtd.to_string().as_str());
 			builder.push_str("\n");
 		}
-		builder.push_str(&self.root_element.as_string_with_indent(indent.into().as_str()));
+		builder.push_str(&self.root_element.to_string_with_indent(indent.into().as_str()));
 		builder.push_str("\n");
 		return builder;
 	}
@@ -274,13 +274,13 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 	/**
 	Writes this Node to a string with the provided indent (used to serialize to XML)
 	 */
-	fn as_string_with_indent(&self, indent: &str) -> String;
+	fn to_string_with_indent(&self, indent: &str) -> String;
 
 	/**
 	Writes this Node to a string with the default indent of two spaces per level (used to serialize to XML)
 	 */
-	fn as_string(&self) -> String {
-		self.as_string_with_indent("  ")
+	fn to_string(&self) -> String {
+		self.to_string_with_indent("  ")
 	}
 	/** Converts this node into a `Box<dyn Node>` for convenient use in collections */
 	fn boxed(self) -> Box<dyn Node>;
@@ -805,6 +805,7 @@ impl Element {
 		let n: String = attr_name.into();
 		let v: String = value.into();
 		self.attributes.insert(n, v);
+		todo!("sanitize name")
 	}
 	/** Deletes an attribute from this element */
 	pub fn remove_attr(&mut self, attr_name: impl Into<String>) -> Option<String> {
@@ -1161,6 +1162,31 @@ impl Element {
 		self.remove_elements(move |e| e.name == n)
 	}
 
+	/// Implementation of writing DOM to XML string
+	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str) -> String {
+		let mut out = String::new();
+		// tage name
+		out.push_str("<");
+		match self.namespace_prefix(){
+			None => {}
+			Some(prefix) => {
+				out.push_str(prefix.as_str());
+				out.push_str(":");
+			}
+		}
+		out.push_str(self.name().as_str());
+		// attributes
+		let attrs = self.attributes();
+		for (k, v) in attrs {
+			out.push_str(" ");
+			out.push_str(k.as_str());
+			out.push_str("=\"");
+			out.push_str(crate::attribute_escape(v).as_str());
+			out.push_str("\"");
+		}
+		todo!()
+	}
+
 }
 
 impl Node for Element {
@@ -1211,8 +1237,8 @@ impl Node for Element {
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
-	fn as_string_with_indent(&self, indent: &str) -> String {
-		todo!()
+	fn to_string_with_indent(&self, indent: &str) -> String {
+		self.to_string_with_prefix_and_indent("", indent)
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1358,7 +1384,7 @@ impl Node for Text {
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
-	fn as_string_with_indent(&self, indent: &str) -> String {
+	fn to_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
 
@@ -1446,7 +1472,7 @@ impl Node for Comment {
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
-	fn as_string_with_indent(&self, indent: &str) -> String {
+	fn to_string_with_indent(&self, indent: &str) -> String {
 		todo!()
 	}
 
