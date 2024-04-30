@@ -37,14 +37,15 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 
 */
 
+use std::cell::OnceCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::fs;
-use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::str::FromStr;
+use regex::Regex;
 use crate::errors::*;
 
 /**
@@ -988,18 +989,34 @@ impl Element {
 		// clean-up text nodes
 		self.cleanup_text_nodes();
 	}
-	/** Discards whitespace-only text nodes and merges sequential text nodes */
+	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {
+		// check if there are children
 		if self.child_nodes.len() == 0 {return;}
+		// merge sequential text nodes (back-to-front order for performance)
 		let mut index = self.child_nodes.len() - 1;
-		loop {
-			if self.child_nodes[index].is_text() {
-
+		while index > 0 {
+			if self.child_nodes[index].is_text()
+			&& self.child_nodes[index-1].is_text() {
+				// index-1 and index are text nodes, merge them
+				let back = self.child_nodes.remove(index);
+				let front = self.child_nodes.remove(index-1);
+				let merged = Text::concat(front.as_text().expect("logic error"), back.as_text().expect("logic error"));
+				self.child_nodes.insert(index-1, merged.boxed());
 			}
-			if index == 0 {break;}
 			index -= 1;
 		}
-		todo!()
+		// remove text nodes that are whitespace
+		let mut index = self.child_nodes.len() - 1;
+		while index >= 0 {
+			if self.child_nodes[index].is_text()
+				&& self.child_nodes[index]
+				.as_text().expect("logic error").is_whitespace() {
+				self.child_nodes.remove(index);
+			}
+			index -= 1;
+		}
+		// Done.
 	}
 	/**
 	Appends multiple child nodes to the current element.
@@ -1258,14 +1275,26 @@ pub struct Text {
 	pub content: String
 }
 
+const WSP_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+
 impl Text {
 	/** Construct a new Text node from the provided string-like object */
 	pub fn new(text: impl Into<String>) -> Self {
 		todo!()
 	}
 
+	/** Returns a new Text node that is equivalent to this one plus the given Text node */
+	pub fn concat(&self, other: &Text) -> Text {
+		let mut content = String::new();
+		content.push_str(self.content.as_str());
+		content.push_str(other.content.as_str());
+		Text{content}
+	}
+
 	fn is_whitespace(&self) -> bool {
-		todo!()
+		let singleton = WSP_MATCHER_SINGLETON;
+		let wsp_matcher = singleton.get_or_init(|| Regex::new(r#"^\s+$"#).unwrap());
+		wsp_matcher.is_match(self.content.as_str())
 	}
 }
 
