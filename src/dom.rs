@@ -1326,19 +1326,14 @@ impl Node for Element {
 
 impl Clone for Element {
 	fn clone(&self) -> Self {
-		todo!()
-		// let mut children_copy: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
-		// for c in self.child_nodes {
-		// 	children_copy.push(Box::new(c.clone()));
-		// }
-		// Self {
-		// 	name: self.name.clone(),
-		// 	child_nodes: children_copy,
-		// 	attributes: self.attributes.clone(),
-		// 	xmlns: self.xmlns.clone(),
-		// 	xmlns_prefix: self.xmlns_prefix.clone(),
-		// 	xmlns_context: self.xmlns_context.clone(),
-		// }
+		Self {
+			name: self.name.clone(),
+			child_nodes: self.child_nodes.clone(),
+			attributes: self.attributes.clone(),
+			xmlns: self.xmlns.clone(),
+			xmlns_prefix: self.xmlns_prefix.clone(),
+			xmlns_context: self.xmlns_context.clone(),
+		}
 	}
 }
 
