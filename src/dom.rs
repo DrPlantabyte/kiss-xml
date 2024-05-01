@@ -1241,7 +1241,7 @@ impl Element {
 					// indent start of each line of text
 					let text = crate::text_escape(
 						c.text().or(Some(String::new()))
-						.expect("logic error")
+							.expect("logic error")
 					);
 					out.push_str(next_prefix.as_str());
 					out.push_str(text.replace("\n", line_end.as_str()).as_str());
@@ -1257,11 +1257,12 @@ impl Element {
 			}
 			// closing tag
 			out.push_str("\n");
-			out.push_str(prefix.as_str());
+			out.push_str(prefix);
 			out.push_str("</");
 			out.push_str(tag_name.as_str());
 			out.push_str(">");
 		}
+		return out;
 	}
 
 }

@@ -406,7 +406,7 @@ r#"<html>
 			Element::new_with_text("h1", "Chapter 1").unwrap().boxed(),
 			Comment::new("Note: there is only one chapter").boxed(),
 			Element::new_with_children("p", vec![
-				Text::new("Once upon a time, there was a little ").unwrap().boxed(),
+				Text::new("Once upon a time, there was a little ").boxed(),
 				Element::new_with_attributes_and_text(
 					"a",
 					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
