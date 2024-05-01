@@ -209,7 +209,7 @@ impl PartialEq<Self> for Document {
 /**
 A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but only Elements can be branch nodes with children of their own.
  */
-pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
+pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToString {
 
 	/**
 	Returns the text content of the code. For a Comment or Text node, this is just the comment or text string. For an Element, this will return *all* text (including from child elements, recursive scan) as a single string, or `None` if this element has no child text nodes
@@ -276,14 +276,33 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display {
 	 */
 	fn to_string_with_indent(&self, indent: &str) -> String;
 
-	/**
-	Writes this Node to a string with the default indent of two spaces per level (used to serialize to XML)
-	 */
-	fn to_string(&self) -> String {
-		self.to_string_with_indent("  ")
-	}
 	/** Converts this node into a `Box<dyn Node>` for convenient use in collections */
 	fn boxed(self) -> Box<dyn Node>;
+}
+
+/// clones a given boxed node
+pub fn clone_node(node: &Box<dyn Node>) -> Box<dyn Node> {
+	if node.is_element() {
+		Box::new(node.as_element().expect("logic error").clone())
+	} else if node.is_text() {
+		Box::new(node.as_text().expect("logic error").clone())
+	} else if node.is_comment() {
+		Box::new(node.as_comment().expect("logic error").clone())
+	} else {
+		panic!("logic error: Node is neither of Element, Text, or Comment");
+	}
+}
+
+/// Returns true if the two nodes are equal, false otherwise
+pub fn node_eq(n1: &Box<dyn Node>, n2: &Box<dyn Node>) -> bool {
+	if n1.is_element() && n2.is_element() {
+		return n1.as_element().expect("logic error") == n2.as_element().expect("logic error");
+	} if n1.is_text() && n2.is_text() {
+		return n1.as_text().expect("logic error") == n2.as_text().expect("logic error");
+	} else if n1.is_comment() && n2.is_comment() {
+		return n1.as_comment().expect("logic error") == n2.as_comment().expect("logic error");
+	}
+	return false;
 }
 
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
@@ -1248,8 +1267,7 @@ impl Element {
 				} else if c.is_comment() {
 					// indent start of comment
 					out.push_str(next_prefix.as_str());
-					let text = c.text().or(Some(String::new())).expect("logic error");
-					out.push_str(format!("<!--{}-->", text).as_str());
+					out.push_str(c.to_string_with_indent(indent).as_str());
 				} else {
 					// child element, recurse
 					out.push_str(c.as_element().expect("logic error").to_string_with_prefix_and_indent(next_prefix.as_str(), indent).as_str());
@@ -1328,15 +1346,7 @@ impl Clone for Element {
 	fn clone(&self) -> Self {
 		let mut new_children: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
 		for c in &self.child_nodes {
-			if c.is_element() {
-				new_children.push(Box::new(c.as_element().expect("logic error").clone()));
-			} else if c.is_text() {
-				new_children.push(Box::new(c.as_text().expect("logic error").clone()));
-			} else if c.is_comment() {
-				new_children.push(Box::new(c.as_comment().expect("logic error").clone()));
-			} else {
-				panic!("logic error: Node is neither of Element, Text, or Comment");
-			}
+			new_children.push(clone_node(c))
 		}
 		Self {
 			name: self.name.clone(),
@@ -1370,26 +1380,38 @@ impl PartialOrd for Element {
 
 impl PartialEq<Self> for Element {
 	fn eq(&self, other: &Self) -> bool {
-		self.name == other.name && self.xmlns
+		if self.name == other.name && self.xmlns == other.xmlns
+			&& self.xmlns_prefix == other.xmlns_prefix
+			&& self.attributes == other.attributes
+			&& self.child_nodes.len() == other.child_nodes.len() {
+			for i in 0..self.child_nodes.len() {
+				if !node_eq(&self.child_nodes[i], &other.child_nodes[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+		return false;
 	}
 }
 
 impl Hash for Element {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		todo!()
+		self.name.hash(state);
+		self.xmlns.hash(state);
 	}
 }
 
 
 impl std::fmt::Display for Element {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
 impl std::fmt::Debug for Element {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
@@ -1406,7 +1428,8 @@ const WSP_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 impl Text {
 	/** Construct a new Text node from the provided string-like object */
 	pub fn new(text: impl Into<String>) -> Self {
-		todo!()
+		let content: String = text.into();
+		Self{content}
 	}
 
 	/** Returns a new Text node that is equivalent to this one plus the given Text node */
@@ -1439,19 +1462,19 @@ impl From<String> for Text {
 impl Node for Text {
 
 	fn text(&self) -> Option<String> {
-		todo!()
+		Some(self.content.clone())
 	}
 
 	fn is_element(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn is_text(&self) -> bool {
-		todo!()
+		true
 	}
 
 	fn is_comment(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
@@ -1470,8 +1493,8 @@ impl Node for Text {
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
-	fn to_string_with_indent(&self, indent: &str) -> String {
-		todo!()
+	fn to_string_with_indent(&self, _indent: &str) -> String {
+		self.content.clone()
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1481,32 +1504,32 @@ impl Node for Text {
 
 impl PartialOrd for Text {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		todo!()
+		self.content.partial_cmp(&other.content)
 	}
 }
 
 impl PartialEq<Self> for Text {
 	fn eq(&self, other: &Self) -> bool {
-		todo!()
+		self.content.eq(&other.content)
 	}
 }
 
 impl Hash for Text {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		todo!()
+		self.content.hash(state)
 	}
 }
 
 
 impl std::fmt::Display for Text {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
 impl std::fmt::Debug for Text {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string())
 	}
 }
 
@@ -1520,26 +1543,27 @@ pub struct Comment{
 impl Comment {
 	/// Constructs a new Comment node from the given string-like object
 	pub fn new(comment: impl Into<String>) -> Self {
-		todo!()
+		let content: String = comment.into();
+		Self{content}
 	}
 }
 
 impl Node for Comment {
 
 	fn text(&self) -> Option<String> {
-		todo!()
+		Some(self.content.clone())
 	}
 
 	fn is_element(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn is_text(&self) -> bool {
-		todo!()
+		false
 	}
 
 	fn is_comment(&self) -> bool {
-		todo!()
+		true
 	}
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
@@ -1558,8 +1582,8 @@ impl Node for Comment {
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
 
-	fn to_string_with_indent(&self, indent: &str) -> String {
-		todo!()
+	fn to_string_with_indent(&self, _indent: &str) -> String {
+		format!("<!--{}-->", self.content)
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1581,31 +1605,31 @@ impl From<String> for Comment {
 
 impl PartialOrd for Comment {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		todo!()
+		self.content.partial_cmp(&other.content)
 	}
 }
 
 impl PartialEq<Self> for Comment {
 	fn eq(&self, other: &Self) -> bool {
-		todo!()
+		self.content.eq(&other.content)
 	}
 }
 
 impl Hash for Comment {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		todo!()
+		self.content.hash(state)
 	}
 }
 
 impl std::fmt::Display for Comment {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
 impl std::fmt::Debug for Comment {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
