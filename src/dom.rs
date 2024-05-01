@@ -1326,9 +1326,21 @@ impl Node for Element {
 
 impl Clone for Element {
 	fn clone(&self) -> Self {
+		let mut new_children: Vec<Box<dyn Node>> = Vec::with_capacity(self.child_nodes.len());
+		for c in &self.child_nodes {
+			if c.is_element() {
+				new_children.push(Box::new(c.as_element().expect("logic error").clone()));
+			} else if c.is_text() {
+				new_children.push(Box::new(c.as_text().expect("logic error").clone()));
+			} else if c.is_comment() {
+				new_children.push(Box::new(c.as_comment().expect("logic error").clone()));
+			} else {
+				panic!("logic error: Node is neither of Element, Text, or Comment");
+			}
+		}
 		Self {
 			name: self.name.clone(),
-			child_nodes: self.child_nodes.clone(),
+			child_nodes: new_children,
 			attributes: self.attributes.clone(),
 			xmlns: self.xmlns.clone(),
 			xmlns_prefix: self.xmlns_prefix.clone(),
@@ -1352,13 +1364,13 @@ impl Default for Element {
 
 impl PartialOrd for Element {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		todo!()
+		self.name.partial_cmp(&other.name)
 	}
 }
 
 impl PartialEq<Self> for Element {
 	fn eq(&self, other: &Self) -> bool {
-		todo!()
+		self.name == other.name && self.xmlns
 	}
 }
 
