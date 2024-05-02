@@ -188,13 +188,13 @@ Produces the XML text representing this XML DOM using the default indent of two 
 
 impl std::fmt::Display for Document{
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
 impl std::fmt::Debug for Document{
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 

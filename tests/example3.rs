@@ -7,6 +7,8 @@ fn example3() {
 	let mut doc = Document::new(Element::new_from_name("politicians").unwrap());
 	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton").unwrap());
 	doc.root_element_mut().append(Element::new_with_text("person", "Bob Dole").unwrap());
+	// print to terminal
+	println!("{}", doc.root_element());
 	// write to file
 	doc.write_to_filepath("politics.xml");
 }
