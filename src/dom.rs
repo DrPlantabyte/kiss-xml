@@ -1060,14 +1060,16 @@ impl Element {
 			index -= 1;
 		}
 		// remove text nodes that are whitespace
+		assert!(self.child_nodes.len() > 0, "logic error: self.child_nodes should never be empty here!");
 		let mut index = self.child_nodes.len() - 1;
-		while index >= 0 {
+		loop {
 			if self.child_nodes[index].is_text()
 				&& self.child_nodes[index]
 				.as_text().expect("logic error").is_whitespace() {
 				self.child_nodes.remove(index);
 			}
-			index -= 1;
+			if index == 0 {break;}
+			index = index.wrapping_sub(1);
 		}
 		// Done.
 	}
@@ -1405,13 +1407,13 @@ impl Hash for Element {
 
 impl std::fmt::Display for Element {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
 impl std::fmt::Debug for Element {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
@@ -1523,13 +1525,13 @@ impl Hash for Text {
 
 impl std::fmt::Display for Text {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
 impl std::fmt::Debug for Text {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.to_string())
+		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
