@@ -172,6 +172,7 @@ pub mod dom;
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
 /// into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn text_escape(text: impl Into<String>) -> String {
+	let mut buffer: String = text.into();
 	todo!()
 }
 

@@ -11,6 +11,10 @@ fn test_strings() -> Result<(), Box<dyn Error>> {
 		"tree", "bark!"
 	)?;
 	eprintln!("{}", e1);
+	let c1 = Comment::new("no comment");
+	eprintln!("{}", c1);
+	let t1 = Text::new("bark! bark!");
+	eprintln!("{}", t1);
 	let e2 = Element::new_with_attributes_and_text(
 		"bob", HashMap::from([("a","b")]), "hi there!"
 	)?;
