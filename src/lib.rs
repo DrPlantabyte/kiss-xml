@@ -162,6 +162,7 @@ as-is or with modification, without any limitations.
 
  */
 
+use std::fs;
 use std::io::Read;
 use std::path::Path;
 
@@ -213,14 +214,18 @@ pub fn unescape(text: impl Into<String>) -> String {
 /** Reads the file from the given filepath and parses it as an XML document
 */
 pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::KissXmlError> {
-	todo!()
+	let path_ref = path.as_ref();
+	let content = fs::read_to_string(path_ref)?;
+	parse_str(content)
 }
 
 /** Reads the XML content from the given stream reader and parses it as an
 XML document
  */
-pub fn parse_stream(reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
-	todo!()
+pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
+	let mut buffer = String::new();
+	reader.read_to_string(&mut buffer)?;
+	parse_str(buffer)
 }
 
 

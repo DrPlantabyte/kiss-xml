@@ -899,7 +899,7 @@ impl Element {
 		</root>"#)?;
 		println!("Fantasy books:");
 		for fantasy_book in library.root_element().search(
-			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some("fantasy")
+			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some(&"fantasy".to_string())
 		){
 			println!("{}", fantasy_book.text());
 		}
@@ -1648,18 +1648,22 @@ impl std::fmt::Debug for Comment {
 /** An XML document declaration, ie `<?xml version="1.0" encoding="UTF-8"?>`
 
 `kiss_xml` does not interpret XML document declarations and does not require XML documents to have one. The declaration will simply be copied verbatum. */
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct Declaration {
-	// TODO
+	decl_str: String
 }
 
 impl Declaration {
 	/// Creates a new Declaration from the given string (eg `<?xml version="1.0" encoding="UTF-8"?>`)
-	pub fn from_str(decl: &str) -> Self {
-		todo!()
+	pub fn from_str(decl: &str) -> Result<Self, KissXmlError> {
+		// parsing XML declarations is beyond the scope of the kiss_xml crate
+		let buffer: String = decl.trim().to_string();
+		if buffer.starts_with("<?") && buffer.ends_with("?>"){
+			Ok(Self{decl_str: buffer.strip_prefix("<?").unwrap().strip_suffix("?>").unwrap().to_string()})
+		} else {
+			Err(ParsingError::new("Invalid XML declaration syntax").into())
+		}
 	}
-	/// Serializes this Declaration as an XML declaration element string (eg ``<?xml version="1.0" encoding="UTF-8"?>`)
-	pub fn to_string(&self) -> String {todo!()}
 	/// Creates a new standard Declaration (UTF-8 encoded XML version 1)
 	pub fn new() -> Self {
 		Self::default()
@@ -1668,33 +1672,45 @@ impl Declaration {
 
 impl Default for Declaration {
 	fn default() -> Self {
-		Declaration::from_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#)
+		Declaration::from_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#).unwrap()
 	}
 }
 
 impl std::fmt::Display for Declaration {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		write!(f, "{}", self.decl_str)
+	}
+}
+
+impl std::fmt::Debug for Declaration {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.decl_str)
 	}
 }
 
 /**
 An XML document type declaration (DTD) defines custom behavior for XML documents, but `kiss_xml` does not support DTDs beyond copying them verbatum.
 */
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct DTD {
-	// TODO
-}
-
-impl std::fmt::Display for DTD {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		todo!()
-	}
+	dtd_str: String
 }
 
 impl DTD {
 	/// Creates a new DTD from the given string (eg `<!DOCTYPE note []>)
-	pub fn from_string(text: impl Into<String>) -> DTD {todo!()}
-	/// Serializes this Declaration as an XML DTD string
-	pub fn to_string(&self) -> String {todo!()}
+	pub fn from_string(text: impl Into<String>) -> Result<DTD, KissXmlError> {
+		// parsing DTDs is beyond the scope of the kiss_xml crate
+		let buffer: String = text.into().trim().to_string();
+		if buffer.starts_with("<!DOCTYPE") && buffer.ends_with(">"){
+			Ok(Self{dtd_str: buffer.strip_prefix("<!DOCTYPE").unwrap().strip_suffix(">").unwrap().to_string()})
+		} else {
+			Err(ParsingError::new("Invalid DTD syntax").into())
+		}
+	}
+}
+
+impl std::fmt::Display for DTD {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.dtd_str)
+	}
 }
