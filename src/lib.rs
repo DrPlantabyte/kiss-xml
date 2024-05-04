@@ -220,7 +220,7 @@ pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::K
 }
 
 /** Reads the XML content from the given stream reader and parses it as an
-XML document
+XML document. Note that this function will read to EOF before returning.
  */
 pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
 	let mut buffer = String::new();
@@ -229,8 +229,19 @@ pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::Kiss
 }
 
 
-/** Reads the XML content from the text string and parses it as an XML document
+/** Reads the XML content from the UTF-8 encoded text string and parses it as an XML document
  */
 pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors::KissXmlError> {
+	let buffer = xml_string.into();
+
 	todo!()
 }
+
+// private struct for implementation of XML parsing searching
+struct TagPos {
+	/// index of start and end of opening tag
+	open_tag_span: (usize, usize),
+	/// index of start and end of closing tag (if it exists)
+	close_tag_span: Option<(usize, usize)>
+}
+
