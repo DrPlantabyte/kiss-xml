@@ -233,15 +233,27 @@ pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::Kiss
  */
 pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors::KissXmlError> {
 	let buffer = xml_string.into();
-
+	// first, look for XML declaration (if there is one)
+	if buffer.starts_with("<?xml") {
+		let tag
+	}
 	todo!()
 }
 
-// private struct for implementation of XML parsing searching
+/// private struct for implementation of XML parsing searching
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Default, Ord, PartialOrd, Debug)]
 struct TagPos {
 	/// index of start and end of opening tag
 	open_tag_span: (usize, usize),
 	/// index of start and end of closing tag (if it exists)
 	close_tag_span: Option<(usize, usize)>
+}
+
+fn next_tag(buffer: &String, from: usize) -> TagPos {
+	let i = from;
+	while i < buffer.len() {
+		i += 1;
+	}
+	todo!()
 }
 
