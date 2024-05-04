@@ -942,8 +942,8 @@ impl Element {
 			</books>
 		</root>"#)?;
 		println!("Fantasy books:");
-		for fantasy_book in library.root_element.search_elements(
-			|e| e.get_attr("genre") == Some("fantasy")
+		for fantasy_book in library.root_element().search_elements(
+			|e| e.get_attr("genre") == Some(&String::from("fantasy"))
 		){
 			println!("{}", fantasy_book.text());
 		}
@@ -980,7 +980,7 @@ impl Element {
 			</books>
 		</root>"#)?;
 		println!("All books:");
-		for book in library.root_element.search_elements_by_name(
+		for book in library.root_element().search_elements_by_name(
 			"book"
 		){
 			println!("{}", book.text());
@@ -1021,8 +1021,8 @@ impl Element {
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
 		use kiss_xml;
 		use kiss_xml::dom::*;
-		let mut doc = Document::new(Element::new_from_name("album"));
-		doc.root_element_mut().append(Element::new_with_text("song", "I Believe I Can Fly"));
+		let mut doc = Document::new(Element::new_from_name("album")?);
+		doc.root_element_mut().append(Element::new_with_text("song", "I Believe I Can Fly")?);
 		println!("{}", doc);
 		/* prints:
 			<?xml version="1.0" encoding="UTF-8"?>
@@ -1091,11 +1091,11 @@ impl Element {
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
 		use kiss_xml;
 		use kiss_xml::dom::*;
-		let mut doc = Document::new(Element::new_from_name("album"));
-		doc.root_element_mut().append_all(&[
-			&Element::new_with_text("song", "I Believe I Can Fly"),
-			&Element::new_with_text("song", "My Heart Will Go On"),
-			&Comment::new("album list incomplete"),
+		let mut doc = Document::new(Element::new_from_name("album")?);
+		doc.root_element_mut().append_all(vec![
+			Element::new_with_text("song", "I Believe I Can Fly").boxed(),
+			Element::new_with_text("song", "My Heart Will Go On").boxed(),
+			Comment::new("album list incomplete").boxed(),
 		]);
 		println!("{}", doc);
 		/* prints:
@@ -1375,7 +1375,7 @@ impl Default for Element {
 	fn default() -> Self {
 		Self {
 			name: "x".to_string(),
-			child_nodes: vec![],
+			child_nodes: Vec::new(),
 			attributes: Default::default(),
 			xmlns: None,
 			xmlns_prefix: None,
