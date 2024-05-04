@@ -12,7 +12,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::Element;
 	let mut doc = kiss_xml::parse_filepath("some-file.xml")?;
-	doc.root_element_mut().append(Element::new_with_text("note", "note text"));
+	doc.root_element_mut().append(Element::new_with_text("note", "note text")?);
 	println!("{}", doc.to_string_with_indent("\t"));
 	Ok(())
 }
@@ -25,10 +25,10 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml::dom::*;
 	use chrono::{DateTime, Utc};
 	let mut doc = Document::new(
-		Element::new_with_children("root", &[
-			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339())),
-			Element::new_with_text("motd", "Message of the day is: hello!")
-		])
+		Element::new_with_children("root", vec![
+			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339())).boxed(),
+			Element::new_with_text("motd", "Message of the day is: hello!")?.boxed()
+		])?
 	);
 	println!("{}", doc.to_string_with_indent("\t"));
 	Ok(())
@@ -332,7 +332,13 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix. If `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children. Note that this will override any xmlns definitions in the attributes
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, text: Option<&str>, attributes: Option<HashMap<TEXT1, TEXT2>>, xmlns: Option<&str>, xmlns_prefix: Option<&str>, children: Option<Vec<Box<dyn Node>>>) -> Result<Self, KissXmlError> {
+	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(
+		name: &str, text: Option<&str>,
+		attributes: Option<HashMap<TEXT1, TEXT2>>,
+		xmlns: Option<&str>,
+		xmlns_prefix: Option<&str>,
+		children: Option<Vec<Box<dyn Node>>>
+	) -> Result<Self, KissXmlError> {
 		// sanity check
 		Element::check_elem_name(name)?;
 		// first, convert attributes to <String,String> map
@@ -380,13 +386,14 @@ impl Element {
 	/** Creates a new Element with the specified name and attributes.
 	# Example
 	```rust
-	fn main() {
+	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes("b", HashMap::from(&[
 			("style", "color: blue")
-		]));
-		println!("{}", e) // prints `<b style="color: blue"/>`
+		]))?;
+		println!("{}", e); // prints `<b style="color: blue"/>`
+		Ok(())
 	}
 	```
 	 */
@@ -400,7 +407,7 @@ impl Element {
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
 	```rust
-	fn main() {
+	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes_and_text(
@@ -409,8 +416,9 @@ impl Element {
 				("style", "color: blue")
 			]),
 			"goose"
-		);
-		println!("{}", e) // prints `<b style="color: blue">goose</b>`
+		)?;
+		println!("{}", e); // prints `<b style="color: blue">goose</b>`
+		Ok(())
 	}
 	```
 	 */
@@ -421,7 +429,7 @@ impl Element {
 	Creates a new Element with the specified name, attributes, and children.
 	# Example
 	```rust
-	fn main() {
+	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes_and_children(
@@ -430,13 +438,14 @@ impl Element {
 				("id", "123")
 			]),
 			vec![Element::new_with_text("name", "Billy Bob").boxed()]
-		);
-		println!("{}", e)
+		)?;
+		println!("{}", e);
 		/* prints:
 			<contact id="123">
 				<name>Billy Bob</name>
 			</contact>
 		*/
+		Ok(())
 	}
 	```
 	 */
@@ -448,19 +457,20 @@ impl Element {
 	Creates a new Element with the specified name and children.
 	# Example
 	```rust
-	fn main() {
+	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
 		let e = Element::new_with_children(
 			"contact",
 			vec![Element::new_with_text("name", "Billy Bob").boxed()]
-		);
-		println!("{}", e)
+		)?;
+		println!("{}", e);
 		/* prints:
 			<contact>
 				<name>Billy Bob</name>
 			</contact>
 		*/
+		Ok(())
 	}
 	```
 	 */
@@ -888,7 +898,7 @@ impl Element {
 			</books>
 		</root>"#)?;
 		println!("Fantasy books:");
-		for fantasy_book in library.root_element.search(
+		for fantasy_book in library.root_element().search(
 			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some("fantasy")
 		){
 			println!("{}", fantasy_book.text());
@@ -1274,9 +1284,9 @@ impl Element {
 					// child element, recurse
 					out.push_str(c.as_element().expect("logic error").to_string_with_prefix_and_indent(next_prefix.as_str(), indent).as_str());
 				}
+				out.push_str("\n");
 			}
 			// closing tag
-			out.push_str("\n");
 			out.push_str(prefix);
 			out.push_str("</");
 			out.push_str(tag_name.as_str());

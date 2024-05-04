@@ -172,27 +172,42 @@ pub mod dom;
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
 /// into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn text_escape(text: impl Into<String>) -> String {
-	let mut buffer: String = text.into();
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&", "&amp;")
+		.replace("<", "&lt;")
+		.replace(">", "&gt;")
 }
 
 /// Escapes a subset of XML reserved characters (&, ', and ") in an attribute
 /// into XML-compatible text, eg replacing "&" with "&amp;" and "'" with "&apos;"
 pub fn attribute_escape(text: impl Into<String>) -> String {
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&", "&amp;")
+		.replace("'", "&apos;")
+		.replace("\"", "&quot;")
 }
 
 /// Escapes all special characters (&, <, >, ', and ") in a string into an
 /// XML-compatible string, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn escape(text: impl Into<String>) -> String {
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&", "&amp;")
+		.replace("<", "&lt;")
+		.replace(">", "&gt;")
+		.replace("'", "&apos;")
+		.replace("\"", "&quot;")
 }
 
 /// Reverses any escaped characters (&, <, >, ', and ") in XML-compatible text
 /// to regenerate the original text, eg replacing "&amp;" with "&" and "&lt;"
 /// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&amp;", "&")
+		.replace("&lt;", "<")
+		.replace("&gt;", ">")
+		.replace("&apos;", "'")
+		.replace("&quot;", "\"")
 }
 
 /** Reads the file from the given filepath and parses it as an XML document

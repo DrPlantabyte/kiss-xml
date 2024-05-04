@@ -109,6 +109,18 @@ fn test_load_from_file() {
 }
 
 #[test]
+fn test_round_trip() {
+	let doc1 = kiss_xml::parse_str(sample_xml_2()).unwrap();
+	let str1 = doc1.to_string_with_indent("\t");
+	let doc2 = kiss_xml::parse_str(&str1).unwrap();
+	assert_eq!(doc1, doc2, "round trip parsing produced different DOM from original");
+	let str2 = doc2.to_string_with_indent("\t");
+	let doc3 = kiss_xml::parse_str(&str2).unwrap();
+	let str3 = doc3.to_string_with_indent("\t");
+	assert_eq!(str2, str3, "round trip XML is different from original");
+}
+
+#[test]
 fn test_dom_parsing() {
 	use kiss_xml;
 	use kiss_xml::dom::*;
