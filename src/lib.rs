@@ -233,9 +233,43 @@ pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::Kiss
  */
 pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors::KissXmlError> {
 	let buffer = xml_string.into();
-	// first, look for XML declaration (if there is one)
-	if buffer.starts_with("<?xml") {
-		let tag
+	let mut decl: Option<dom::Declaration> = None;
+	let mut dtds: Vec<dom::DTD> = Vec::new();
+	let mut pos: usize = 0;
+	let mut no_comment_warn = 0;
+	// parse decl and dtds, break on start of root element
+	loop {
+		let (tag_start, tag_end) = next_tag(&buffer, pos);
+		if tag_start.is_none() {
+			// not XML
+			return Err(errors::ParsingError(format!("no XML content")).into());
+		}
+		if tag_end.is_none(){
+			let (line, col) = line_and_column(&buffer, tag_start.unwrap());
+			return Err(errors::ParsingError(format!(
+				"invalid XML syntax on line {line}, column {col}: '<' has not matching '>'"
+			)).into());
+		}
+		let tag_start = tag_start.unwrap();
+		let tag_end = tag_end.unwrap();
+		let slice = &buffer[tag_start..tag_end];
+		if slice.starts_with("<?xml") {
+			if pos != 0 {
+				let (line, col) = line_and_column(&buffer, tag_start.unwrap());
+				return Err(errors::ParsingError(format!(
+					"invalid XML syntax on line {line}, column {col}: <?xml ...?> declaration must at start of XML"
+				)).into());
+			}
+			decl = Some(dom::Declaration::from_str(slice)?);
+		} else if slice.starts_with("<!--") {
+			// comments outside root element not supported
+			if no_comment_warn == 0 {
+				eprintln!("WARNING: Encountered comment {slice} outside of root element. Comments outside of the root are not supported and will be ignored.");
+			}
+			no_comment_warn += 1;
+		} else if slice.starts_with("<!DOCTYPE") {
+			todo!()
+		}
 	}
 	todo!()
 }
@@ -270,10 +304,9 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 		// DTD or other XML weirdness, do nested search for closing >
 		return (start, nested_quote_aware_find_close(sub_buffer,2).map(|i|i+start_index))
 	} else {
-		// normal element (we assume)
-		todo!()
+		// normal element tag (we assume)
+		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index))
 	}
-	todo!()
 }
 
 fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
@@ -329,3 +362,16 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 	None
 }
 
+fn line_and_column(text: &String, pos: usize) -> (usize, usize){
+	let mut line = 1;
+	let mut col = 1;
+	for (i, c) in text.char_indices(){
+		col += 1;
+		if c == '\n' {
+			line += 1;
+			col = 1;
+		}
+		if i >= pos {break;}
+	}
+	(line, col)
+}
