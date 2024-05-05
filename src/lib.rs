@@ -259,16 +259,16 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 	let sub_buffer = &buffer[start_index..];
 	if sub_buffer.starts_with("<!--") {
 		// comment
-		return (start, sub_buffer.find("-->"));
+		return (start, sub_buffer.find("-->").map(|i|i+start_index));
 	} else if sub_buffer.starts_with("<?") {
 		// declaration, look for ?> but handle quoting
-		return (start, quote_aware_find(sub_buffer, "?>", 2))
+		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index))
 	} else if sub_buffer.starts_with("<![CDATA[") {
 		// CDATA
 		return (start, sub_buffer.find("]]>"));
 	} else if sub_buffer.starts_with("<!") {
 		// DTD or other XML weirdness, do nested search for closing >
-		todo!()
+		return (start, nested_quote_aware_find_close(sub_buffer,2).map(|i|i+start_index))
 	} else {
 		// normal element (we assume)
 		todo!()
@@ -323,7 +323,7 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 					return Some(from+i)
 				}
 				depth -= 1;
-			} else
+			}
 		}
 	}
 	None
