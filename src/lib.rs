@@ -240,20 +240,92 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	todo!()
 }
 
-/// private struct for implementation of XML parsing searching
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Default, Ord, PartialOrd, Debug)]
-struct TagPos {
-	/// index of start and end of opening tag
-	open_tag_span: (usize, usize),
-	/// index of start and end of closing tag (if it exists)
-	close_tag_span: Option<(usize, usize)>
-}
-
-fn next_tag(buffer: &String, from: usize) -> TagPos {
-	let i = from;
-	while i < buffer.len() {
+/// finds next <> enclosed thing (or None if EoF is reached)
+fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
+	let mut i = from;
+	let mut start: Option<usize> = None;
+	let mut end: Option<usize> = None;
+	while start.is_none() && i < buffer.len() {
+		if buffer[i] == '<' {
+			start = Some(i);
+		}
 		i += 1;
 	}
+	if start.is_none() {
+		return (None, None);
+	}
+	let start_index = start.unwrap();
+	// the rules differ depending on the kind of tag
+	let sub_buffer = &buffer[start_index..];
+	if sub_buffer.starts_with("<!--") {
+		// comment
+		return (start, sub_buffer.find("-->"));
+	} else if sub_buffer.starts_with("<?") {
+		// declaration, look for ?> but handle quoting
+		return (start, quote_aware_find(sub_buffer, "?>", 2))
+	} else if sub_buffer.starts_with("<![CDATA[") {
+		// CDATA
+		return (start, sub_buffer.find("]]>"));
+	} else if sub_buffer.starts_with("<!") {
+		// DTD or other XML weirdness, do nested search for closing >
+		todo!()
+	} else {
+		// normal element (we assume)
+		todo!()
+	}
 	todo!()
+}
+
+fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (i, c) in text[from..].char_indices() {
+		if in_quote {
+			if c == quote_char { // end of quoted field
+				in_quote = false;
+			}
+		} else {
+			if c == '"' { // start of double-quoted field
+				quote_char = '"';
+				in_quote = true;
+			} else if c == '\'' { // start of single-quoted field
+				quote_char = '\'';
+				in_quote = true;
+			} else if text[(from + i)..].starts_with(pattern) {
+				return Some(from+i);
+			}
+		}
+	}
+	None
+}
+
+
+fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
+	let mut depth: i32 = 0;
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (i, c) in text[from..].char_indices() {
+		if in_quote {
+			if c == quote_char { // end of quoted field
+				in_quote = false;
+			}
+		} else {
+			if c == '"' { // start of double-quoted field
+				quote_char = '"';
+				in_quote = true;
+			} else if c == '\'' { // start of single-quoted field
+				quote_char = '\'';
+				in_quote = true;
+			} else if c == '<' {
+				depth += 1;
+			} else if c == '>' {
+				if depth == 0 {
+					return Some(from+i)
+				}
+				depth -= 1;
+			} else
+		}
+	}
+	None
 }
 
