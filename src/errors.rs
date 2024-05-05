@@ -1,6 +1,3 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
-
 /*!
 The kiss_xml::error module holds an enum of possible error types, each of which
 has a corresponding implementation struct.

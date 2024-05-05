@@ -1,6 +1,3 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
-
 /*!
 # KISS-XML: Keep It Super Simple XML
 
@@ -162,9 +159,11 @@ as-is or with modification, without any limitations.
 
  */
 
+use std::cell::OnceCell;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use regex::Regex;
 
 pub mod errors;
 pub mod dom;
@@ -237,26 +236,34 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	let mut dtds: Vec<dom::DTD> = Vec::new();
 	let mut pos: usize = 0;
 	let mut no_comment_warn = 0;
+	let mut last_span: (usize, usize) = (0,0);
 	// parse decl and dtds, break on start of root element
 	loop {
 		let (tag_start, tag_end) = next_tag(&buffer, pos);
 		if tag_start.is_none() {
 			// not XML
-			return Err(errors::ParsingError(format!("no XML content")).into());
+			return Err(errors::ParsingError::new(format!("no XML content")).into());
 		}
 		if tag_end.is_none(){
 			let (line, col) = line_and_column(&buffer, tag_start.unwrap());
-			return Err(errors::ParsingError(format!(
+			return Err(errors::ParsingError::new(format!(
 				"invalid XML syntax on line {line}, column {col}: '<' has not matching '>'"
 			)).into());
 		}
 		let tag_start = tag_start.unwrap();
 		let tag_end = tag_end.unwrap();
+		let text_between = &buffer[last_span.1..tag_start];
+		if real_text(text_between).is_some() {
+			let (line, col) = line_and_column(&buffer, last_span.1);
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}: Text outside the root element is not supported"
+			)).into());
+		}
 		let slice = &buffer[tag_start..tag_end];
 		if slice.starts_with("<?xml") {
 			if pos != 0 {
 				let (line, col) = line_and_column(&buffer, tag_start.unwrap());
-				return Err(errors::ParsingError(format!(
+				return Err(errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}: <?xml ...?> declaration must at start of XML"
 				)).into());
 			}
@@ -296,19 +303,19 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 		return (start, sub_buffer.find("-->").map(|i|i+start_index));
 	} else if sub_buffer.starts_with("<?") {
 		// declaration, look for ?> but handle quoting
-		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index))
+		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index+2))
 	} else if sub_buffer.starts_with("<![CDATA[") {
 		// CDATA
-		return (start, sub_buffer.find("]]>"));
+		return (start, sub_buffer.find("]]>").map(|i|i+start_index+3));
 	} else if sub_buffer.starts_with("<!") {
 		// DTD or other XML weirdness, do nested search for closing >
-		return (start, nested_quote_aware_find_close(sub_buffer,2).map(|i|i+start_index))
+		return (start, nested_quote_aware_find_close(sub_buffer,2).map(|i|i+start_index+1))
 	} else {
 		// normal element tag (we assume)
-		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index))
+		return (start, quote_aware_find(sub_buffer, ">", 1).map(|i|i+start_index+1))
 	}
 }
-
+/// like `String.find()` but skipping quoted content
 fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
 	let mut in_quote = false;
 	let mut quote_char = '\0';
@@ -332,7 +339,7 @@ fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
 	None
 }
 
-
+/// like `quote_aware_find()` above, but the pattern is '>' and it skips both quoted content and nested <tags>
 fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 	let mut depth: i32 = 0;
 	let mut in_quote = false;
@@ -362,6 +369,28 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 	None
 }
 
+
+/// singleton regex matcher
+const IS_BLANK_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// singleton regex matcher
+const INDENTED_LINE_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// extracts the actual text (accounting for indenting) from a string slice,
+/// returning None if it is all whitespace
+fn real_text(text: &str) -> Option<String> {
+	// check for empty string
+	let singleton = IS_BLANK_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap());
+	if matcher.is_match(text) {
+		return None;
+	}
+	// extract actual text
+	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
+	let text = matcher.replace(text, "\n");
+	Some(text.trim_start().to_string())
+}
+
+/// get line and column number for index to use for error reporting
 fn line_and_column(text: &String, pos: usize) -> (usize, usize){
 	let mut line = 1;
 	let mut col = 1;

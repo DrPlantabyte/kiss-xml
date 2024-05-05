@@ -1,6 +1,3 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
-
 /*!
 A document object model (DOM) is a tree data structure with three different kinds of nodes: Element, Text, and Comment nodes. Element nodes can have children (a list of child nodes), while Text and Comment nodes cannot. As per the XML specification, a DOM can only have one root element.
 
