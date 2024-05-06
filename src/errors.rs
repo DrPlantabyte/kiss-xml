@@ -21,6 +21,8 @@ pub enum KissXmlError {
 	InvalidAttributeName(InvalidAttributeName),
 	/// This error indicates an attempt to create an element with a name that is not valid
 	InvalidElementName(InvalidElementName),
+	/// Error indicating an attempt to do something that is valid XML, but not supported by KISS-XML
+	NotSupportedError(NotSupportedError),
 	/// An I/O error when writing or reading a file
 	IOError(std::io::Error),
 }
@@ -38,6 +40,7 @@ impl Display for KissXmlError {
 			KissXmlError::IndexOutOfBounds(e) => write!(f, "{}", e),
 			KissXmlError::InvalidAttributeName(e) => write!(f, "{}", e),
 			KissXmlError::InvalidElementName(e) => write!(f, "{}", e),
+			KissXmlError::NotSupportedError(e) => write!(f, "{}", e),
 			KissXmlError::IOError(e) => write!(f, "{}", e),
 		}
 	}
@@ -237,4 +240,36 @@ impl Display for InvalidElementName {
 }
 
 impl std::error::Error for InvalidElementName{}
+
+
+/// Error indicating an attempt to do something that is valid XML, but not supprted by KISS-XML
+#[derive(Clone, Debug)]
+pub struct NotSupportedError {
+	/// The error message.
+	pub msg: String
+}
+
+impl NotSupportedError{
+	/// New error with a given message
+	pub fn new(msg: impl Into<String>) -> Self {
+		Self{msg: msg.into()}
+	}
+	/// Formats and prints the error message
+	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", &self.msg)
+	}
+}
+
+impl From<NotSupportedError> for KissXmlError {
+	fn from(e: NotSupportedError) -> Self {KissXmlError::NotSupportedError(e)}
+}
+
+impl Display for NotSupportedError {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "NotSupportedError: {}", self.msg)
+	}
+}
+
+impl std::error::Error for NotSupportedError{}
+
 

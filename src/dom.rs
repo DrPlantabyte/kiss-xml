@@ -537,6 +537,15 @@ impl Element {
 		}
 	}
 	/**
+	This is the tag name as it will appear in serialized XML. If this element has an xmlns prefix, then this returns prefix:name, otherwise it just returns the name
+	*/
+	pub fn tagname(&self) -> String {
+		match &self.xmlns_prefix{
+			None => self.name.clone(),
+			Some(pre) => format!("{}:{}", pre, self.name)
+		}
+	}
+	/**
 	Returns the prefix of this element's namespace, if it has a prefixed namespace. If this element has a namespace but `namespace_prefix()` returns `None`, then the namespace is a default namespace (no prefix, can be inherited by children).
 	 */
 	pub fn namespace_prefix(&self) -> Option<String> {
