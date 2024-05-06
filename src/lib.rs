@@ -377,6 +377,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			// is it a closing tag?
 			if slice.starts_with("</") {
 				let tagname = strip_tag(slice);
+				if e_stack.len() == 0 {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"invalid XML syntax on line {line}, column {col}: cannot start with a closing tag"
+					)).into());
+				}
 				let open_tagname = e_stack.last().unwrap().tagname();
 				if tagname != open_tagname {
 					let (line, col) = line_and_column(&buffer, tag_span.0);
@@ -384,7 +390,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						"invalid XML syntax on line {line}, column {col}: closing tag {slice} does not match <{open_tagname}>"
 					)).into());
 				}
-				todo!();
+				e_stack.pop();
+			} else {
+				// add new element to the stack
+				let tag_content = strip_tag(slice);
+				let components = quote_aware_split(tag_content.as_str());
+				todo!()
 			}
 			todo!();
 		}
@@ -469,6 +480,28 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 		// normal element tag (we assume)
 		return (start, quote_aware_find(sub_buffer, ">", 1).map(|i|i+start_index+1))
 	}
+}
+
+/// splits by whitespace, respecting quotes
+fn quote_aware_split(text: &str) -> Vec<String> {
+	let mut builder = String::new();
+	let mut vec: Vec<String> = Vec::new();
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (i, c) in text.char_indices() {
+		if !in_quote && (c == '\'' || c == '"') {
+			in_quote = true;
+			quote_char = c;
+		}
+		if in_quote {
+			builder.push(c);
+			if c == quote_char {
+				in_quote = false;
+			}
+		}
+		todo!()
+	}
+	todo!()
 }
 /// like `String.find()` but skipping quoted content
 fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
