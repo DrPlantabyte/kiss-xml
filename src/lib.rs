@@ -160,6 +160,7 @@ as-is or with modification, without any limitations.
  */
 
 use std::cell::OnceCell;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
@@ -393,8 +394,8 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				e_stack.pop();
 			} else {
 				// add new element to the stack
-				let tag_content = strip_tag(slice);
-				let components = quote_aware_split(tag_content.as_str());
+				let parent = e_stack.last();
+				let mut new_element = dom::Element::new_from_string(slice);
 				todo!()
 			}
 			todo!();
@@ -422,8 +423,8 @@ fn strip_tag(tag: &str) -> String {
 	let mut tag = tag;
 	if tag.starts_with("<") {tag = &tag[1..];}
 	if tag.starts_with("/") {tag = &tag[1..];}
-	if tag.ends_with(">") {tag = &tag[..tag.len().saturating_sub(1);}
-	if tag.ends_with("/") {tag = &tag[..tag.len().saturating_sub(1);}
+	if tag.ends_with(">") {tag = &tag[..tag.len().saturating_sub(1)];}
+	if tag.ends_with("/") {tag = &tag[..tag.len().saturating_sub(1)];}
 	tag.trim().to_string()
 }
 
@@ -490,18 +491,29 @@ fn quote_aware_split(text: &str) -> Vec<String> {
 	let mut quote_char = '\0';
 	for (i, c) in text.char_indices() {
 		if !in_quote && (c == '\'' || c == '"') {
+			// start of quoted text
 			in_quote = true;
 			quote_char = c;
-		}
-		if in_quote {
+			builder.push(c);
+		} else if in_quote {
+			// quoted text
 			builder.push(c);
 			if c == quote_char {
+				// end of quoted text
 				in_quote = false;
 			}
+		} else if c.is_whitespace() {
+			// break on whitespace
+			if builder.len() > 0 {
+				vec.push(builder);
+				builder = String::new();
+			}
+		} else {
+			// normal text
+			builder.push(c);
 		}
-		todo!()
 	}
-	todo!()
+	return vec;
 }
 /// like `String.find()` but skipping quoted content
 fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
