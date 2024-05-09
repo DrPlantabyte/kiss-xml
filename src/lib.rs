@@ -354,8 +354,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		// if text is not empty, add text node
 		match real_text(text) {
 			None => {},
-			Some(content) => {e_stack.last_mut().unwrap().append(dom::Text::new(content))}
-		}
+			Some(content) => {
+				e_stack.last_mut().unwrap().append(dom::Text::new(content))
+			}
+		};
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
@@ -386,7 +388,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						"invalid XML syntax on line {line}, column {col}: cannot start with a closing tag"
 					)).into());
 				}
-				let open_tagname = e_stack.last().unwrap().tagname();
+				let open_tagname = e_stack.last().unwrap().tag_name();
 				if tagname != open_tagname {
 					let (line, col) = line_and_column(&buffer, tag_span.0);
 					return Err(errors::ParsingError::new(format!(
@@ -394,6 +396,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					)).into());
 				}
 				e_stack.pop();
+				// check end condition
+				if e_stack.is_empty(){
+					break;
+				}
 			} else {
 				// add new element to the stack
 				let tag_content = strip_tag(slice);
@@ -451,20 +457,21 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					name, None, Some(attrs), xmlns.map(String::as_str), xmlns_prefix.map(String::as_str), None
 				)?;
 				new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
-				// append new element to parent
-				match e_stack.last_mut() {
-					None => {
-						// first element, no parent to add to, set root
-						root_element = Some(new_element);
-					},
-					Some(parent) => parent.append(new_element)
-				}
 				// push new element to stack if it is not self-closing
 				match slice.ends_with("/>") {
 					true => {
 						// self-closing tag, don't add to stack
 					}
 					false => e_stack.push(&new_element)
+				}
+				// append new element to parent
+				match e_stack.last_mut() {
+					None => {
+						// first element, no parent to add to, set root
+						root_element = Some(new_element);
+						e_stack.push(&new_element);
+					},
+					Some(parent) => parent.append(new_element)
 				}
 			}
 		}
@@ -483,7 +490,21 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
 	}
-	todo!()
+	// error check
+	if root_element.is_none() {
+		return Err(errors::ParsingError::new(format!(
+			"invalid XML syntax: no root element"
+		)).into())
+	}
+	// return a DOM document
+	Ok(dom::Document::new_with_decl_dtd(
+		root_element.expect("logic error"),
+		decl,
+		match &dtds.is_empty(){
+			true => None,
+			false => Some(dtds)
+		}
+	))
 }
 
 /// removes leading and trailing <> and/or /

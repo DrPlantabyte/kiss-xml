@@ -529,10 +529,10 @@ impl Element {
 	/**
 	This is the tag name as it will appear in serialized XML. If this element has an xmlns prefix, then this returns prefix:name, otherwise it just returns the name
 	*/
-	pub fn tagname(&self) -> String {
+	pub fn tag_name(&self) -> String {
 		match &self.xmlns_prefix{
 			None => self.name.clone(),
-			Some(pre) => format!("{}:{}", pre, self.name)
+			Some(prefix) => format!("{}:{}", prefix, self.name)
 		}
 	}
 	/**
@@ -1226,12 +1226,7 @@ impl Element {
 	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str) -> String {
 		let mut out = String::from(prefix);
 		// tag name
-		let tag_name = match self.namespace_prefix(){
-			None => self.name.clone(),
-			Some(xmlns_prefix) => {
-				format!("{}:{}", xmlns_prefix, self.name)
-			}
-		};
+		let tag_name = self.tag_name();
 		out.push_str("<");
 		out.push_str(tag_name.as_str());
 
