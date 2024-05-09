@@ -44,7 +44,6 @@ use std::path::Path;
 use std::str::FromStr;
 use regex::Regex;
 use crate::errors::*;
-use crate::{dom, errors, line_and_column, quote_aware_split, strip_tag};
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -475,64 +474,6 @@ impl Element {
 	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Result<Self, KissXmlError> {
 		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
 	}
-
-	pub fn new_from_string(tag: &str, parent: Option<&Element>) -> Self {
-		let tag_content = strip_tag(tag);
-		let components = quote_aware_split(tag_content.as_str());
-		if components.len() == 0 {
-			let (line, col) = line_and_column(&buffer, tag_span.0);
-			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}: empty tags not supported"
-			)).into());
-		}
-		// parse attributes
-		let mut attrs: HashMap<String, String> = HashMap::new();
-		for i in 1..components.len() {
-			let kv = &components[i];
-			if !kv.contains("=") {
-				let (line, col) = line_and_column(&buffer, tag_span.0);
-				return Err(errors::ParsingError::new(format!(
-					"invalid XML syntax on line {line}, column {col}: attributes must be in the form 'key=\"value\"'"
-				)).into());
-			}
-			let (k, mut v) = kv.split_once("=").unwrap();
-			// note: v string contains enclosing quotes
-			v = &v[1..(v.len()-1)]; // remove quotes
-			attrs.insert(k, v);
-		}
-		// parse name and namespace
-		let mut name = components[0].as_str();
-		let mut xmlns: Option<String> = None;
-		let mut xmlns_prefix: Option<String> = None;
-		let inherited_xmlns_context = match e_stack.is_empty() {
-			true => None,
-			false => e_stack.last().unwrap().get_namespace_context()
-		};
-		if name.contains(":"){
-			let (a, b) = name.split_once(":").unwrap();
-			name = b;
-			xmlns_prefix = Some(a.to_string());
-			// check if the prefix is in attributes or inherited from parent
-			let prefix_key = format!("xmlns:{a}");
-			xmlns = match attrs.contains_key(&prefix_key){
-				true => attrs.get(prefix_key.as_str()).clone(),
-				false => match inherited_xmlns_context{
-					None => {
-						let (line, col) = line_and_column(&buffer, tag_span.0);
-						return Err(errors::ParsingError::new(format!(
-							"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
-						)).into());
-					}
-					Some(ctx) => {ctx.get(prefix_key.as_str()).clone()}
-				}
-			};
-		}
-		let mut new_element = dom::Element::new(
-			name, None, attrs, xmlns, xmlns_prefix, None
-		);
-		new_element.set
-	}
-
 	/** checks the element's attributes for xmlns definitions
 	Note that the default xmlns (if present) is saved as prefix ""
 	# Args
@@ -745,9 +686,9 @@ impl Element {
 		Self::xmlns_context_from_attributes(&self.attributes, None, false)
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
+	pub(crate) fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
 	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
+	pub(crate) fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
 		// inherit default namespace unless this element also defines one
 		match self.xmlns_prefix {
 			None => {

@@ -166,6 +166,7 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 use regex::Regex;
+use crate::dom::Element;
 
 pub mod errors;
 pub mod dom;
@@ -344,7 +345,8 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		tag_span = (tag_start, tag_end);
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
-	let mut e_stack: Vec<dom::Element> = Vec::new();
+	let mut root_element: Option<Element> = None;
+	let mut e_stack: Vec<&dom::Element> = Vec::new();
 	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
 	loop {
 		// get text since last tag
@@ -375,7 +377,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					"invalid XML syntax on line {line}, column {col}"
 				)).into())
 			})?;
-			// is it a closing tag?
+			// is it a closing tag? If so, pop the parent stack
 			if slice.starts_with("</") {
 				let tagname = strip_tag(slice);
 				if e_stack.len() == 0 {
@@ -394,11 +396,77 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				e_stack.pop();
 			} else {
 				// add new element to the stack
-				let parent = e_stack.last();
-				let mut new_element = dom::Element::new_from_string(slice);
-				todo!()
+				let tag_content = strip_tag(slice);
+				let components = quote_aware_split(tag_content.as_str());
+				if components.len() == 0 {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"invalid XML syntax on line {line}, column {col}: empty tags not supported"
+					)).into());
+				}
+				// parse attributes
+				let mut attrs: HashMap<String, String> = HashMap::new();
+				for i in 1..components.len() {
+					let kv = &components[i];
+					if !kv.contains("=") {
+						let (line, col) = line_and_column(&buffer, tag_span.0);
+						return Err(errors::ParsingError::new(format!(
+							"invalid XML syntax on line {line}, column {col}: attributes must be in the form 'key=\"value\"'"
+						)).into());
+					}
+					let (k, mut v) = kv.split_once("=").unwrap();
+					// note: v string contains enclosing quotes
+					v = &v[1..(v.len()-1)]; // remove quotes
+					attrs.insert(k, v);
+				}
+				// parse name and namespace
+				let mut name = components[0].as_str();
+				let mut xmlns: Option<String> = None;
+				let mut xmlns_prefix: Option<String> = None;
+				// check parent for inherited namespaces
+				let (inherited_default_namespace, inherited_xmlns_context) = match e_stack.last() {
+					None => (None, None),
+					Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
+				};
+				if name.contains(":"){
+					let (a, b) = name.split_once(":").unwrap();
+					name = b;
+					xmlns_prefix = Some(a.to_string());
+					// check if the prefix is in attributes or inherited from parent
+					let prefix_key = format!("xmlns:{a}");
+					xmlns = match attrs.contains_key(&prefix_key){
+						true => attrs.get(prefix_key.as_str()).clone(),
+						false => match &inherited_xmlns_context{
+							None => {
+								let (line, col) = line_and_column(&buffer, tag_span.0);
+								return Err(errors::ParsingError::new(format!(
+									"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
+								)).into());
+							}
+							Some(ctx) => {ctx.get(prefix_key.as_str()).clone()}
+						}
+					};
+				}
+				let mut new_element = dom::Element::new(
+					name, None, Some(attrs), xmlns.map(String::as_str), xmlns_prefix.map(String::as_str), None
+				)?;
+				new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
+				// append new element to parent
+				match e_stack.last_mut() {
+					None => {
+						// first element, no parent to add to, set root
+						root_element = Some(new_element);
+					},
+					Some(parent) => parent.append(new_element)
+				}
+				// push new element to stack if it is not self-closing
+				match slice.ends_with("/>") {
+					true => {
+						// self-closing tag, don't add to stack
+					}
+					false => e_stack.push(&new_element)
+				}
 			}
-			todo!();
 		}
 		// find next tag, repeat
 		let next_span = next_tag(&buffer, tag_span.1);
