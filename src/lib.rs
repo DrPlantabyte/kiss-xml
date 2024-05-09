@@ -203,44 +203,51 @@ pub fn escape(text: impl Into<String>) -> String {
 /// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
 	let mut buffer: String = text.into();
-	for (i, c) in buffer.char_indices() {
-		if c == '&' {
-			let start = i;
-			let slice = &buffer[i..];
-			for (j, k) in slice.char_indices() {
-				if k == ';' {
-					let end = i + j + 1;
-					let slice = &slice[..j];
-					// note: trailing ; omitted from this slice
-					if slice == "&amp" {
-						buffer = string_insert(buffer.as_str(), (start, end), "&");
-					}
-					if slice == "&lt" {
-						buffer = string_insert(buffer.as_str(), (start, end), "<");
-					}
-					if slice == "&gt" {
-						buffer = string_insert(buffer.as_str(), (start, end), ">");
-					}
-					if slice == "&apos" {
-						buffer = string_insert(buffer.as_str(), (start, end), "'");
-					}
-					if slice == "&quot" {
-						buffer = string_insert(buffer.as_str(), (start, end), "\"");
-					}
-					if slice.starts_with("&#") {
-						match u32::from_str_radix(&slice[2..], 16) {
-							Ok(codepoint) => {
-								match char::from_u32(codepoint) {
-									Some(unicode) => {
-										buffer = string_insert(buffer.as_str(), (start, end), unicode.to_string().as_str());
-									},
-									None => {/* do nothing */}
+	let mut last_i: usize = 0;
+	loop {
+		if last_i >= buffer.len(){break;}
+		match (&buffer[last_i..]).find("&") {
+			None => break,
+			Some(i) => {
+				let i = i+last_i;
+				let start = i;
+				let slice = &buffer[i..];
+				for (j, k) in slice.char_indices() {
+					if k == ';' {
+						let end = i + j + 1;
+						let slice = &slice[..j];
+						// note: trailing ; omitted from this slice
+						if slice == "&amp" {
+							buffer = string_insert(buffer.as_str(), (start, end), "&");
+						}
+						if slice == "&lt" {
+							buffer = string_insert(buffer.as_str(), (start, end), "<");
+						}
+						if slice == "&gt" {
+							buffer = string_insert(buffer.as_str(), (start, end), ">");
+						}
+						if slice == "&apos" {
+							buffer = string_insert(buffer.as_str(), (start, end), "'");
+						}
+						if slice == "&quot" {
+							buffer = string_insert(buffer.as_str(), (start, end), "\"");
+						}
+						if slice.starts_with("&#") {
+							match u32::from_str_radix(&slice[2..], 16) {
+								Ok(codepoint) => {
+									match char::from_u32(codepoint) {
+										Some(unicode) => {
+											buffer = string_insert(buffer.as_str(), (start, end), unicode.to_string().as_str());
+										},
+										None => { /* do nothing */ }
+									}
 								}
+								Err(_) => { /* do nothing */ }
 							}
-							Err(_) => {/* do nothing */}
 						}
 					}
 				}
+				last_i = i+1;
 			}
 		}
 	}
@@ -306,7 +313,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		let slice = &buffer[tag_start..tag_end];
 		if slice.starts_with("<?xml") {
 			if tag_span.0 != 0 {
-				let (line, col) = line_and_column(&buffer, tag_start.unwrap());
+				let (line, col) = line_and_column(&buffer, tag_start);
 				return Err(errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}: <?xml ...?> declaration must at start of XML"
 				)).into());
@@ -320,24 +327,24 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			no_comment_warn += 1;
 		} else if slice.starts_with("<!DOCTYPE") {
 			// DTD
-			let dtd = dom::DTD::from_string(slice);
+			let dtd = dom::DTD::from_string(slice)?;
 			dtds.push(dtd);
 		} else if slice.starts_with("<!"){
 			// some other XML mallarky
 			eprintln!("WARNING: Ignoring {slice} (not supported outside root element)");
 		} else if slice.starts_with("</") {
 			// bad XML
-			let (line, col) = line_and_column(&buffer, tag_start.unwrap());
+			let (line, col) = line_and_column(&buffer, tag_start);
 			return Err(errors::ParsingError::new(format!(
 				"invalid XML syntax on line {line}, column {col}: cannot start with closing tag"
 			)).into());
 		} else {
 			// root element?
 			check_element_tag(slice).map_err(move |e| {
-				let (line, col) = line_and_column(&buffer, tag_start.unwrap());
-				Err(errors::ParsingError::new(format!(
+				let (line, col) = line_and_column(&buffer, tag_start);
+				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
-				)).into())
+				))
 			})?;
 			tag_span = (tag_start, tag_end);
 			break;
@@ -367,17 +374,17 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
 			let (line, col) = line_and_column(&buffer, tag_span.0);
-			Err(errors::NotSupportedError::new(format!(
+			return Err(errors::NotSupportedError::new(format!(
 				"error on line {line}, column {col}: kiss-xml does not support '{slice}'"
-			)).into())
+			)).into());
 		} else {
 			// element
 			// sanity check
 			check_element_tag(slice).map_err(move |e| {
 				let (line, col) = line_and_column(&buffer, tag_span.0);
-				Err(errors::ParsingError::new(format!(
+				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
-				)).into())
+				))
 			})?;
 			// is it a closing tag? If so, pop the parent stack
 			if slice.starts_with("</") {
@@ -423,7 +430,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					let (k, mut v) = kv.split_once("=").unwrap();
 					// note: v string contains enclosing quotes
 					v = &v[1..(v.len()-1)]; // remove quotes
-					attrs.insert(k, v);
+					attrs.insert(k.to_string(), v.to_string());
 				}
 				// parse name and namespace
 				let mut name = components[0].as_str();
@@ -441,7 +448,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					// check if the prefix is in attributes or inherited from parent
 					let prefix_key = format!("xmlns:{a}");
 					xmlns = match attrs.contains_key(&prefix_key){
-						true => attrs.get(prefix_key.as_str()).clone(),
+						true => attrs.get(prefix_key.as_str()).map(String::clone),
 						false => match &inherited_xmlns_context{
 							None => {
 								let (line, col) = line_and_column(&buffer, tag_span.0);
@@ -449,12 +456,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 									"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
 								)).into());
 							}
-							Some(ctx) => {ctx.get(prefix_key.as_str()).clone()}
+							Some(ctx) => {ctx.get(prefix_key.as_str()).map(String::clone)}
 						}
 					};
 				}
 				let mut new_element = dom::Element::new(
-					name, None, Some(attrs), xmlns.map(String::as_str), xmlns_prefix.map(String::as_str), None
+					name, None, Some(attrs), xmlns.map(|s| s.as_str()), xmlns_prefix.map(|s| s.as_str()), None
 				)?;
 				new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
 				// push new element to stack if it is not self-closing
@@ -483,9 +490,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else if next_span.1.is_none() {
 			// broken tag?
 			let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-			Err(errors::ParsingError::new(format!(
+			return Err(errors::ParsingError::new(format!(
 				"invalid XML syntax on line {line}, column {col}"
-			)).into())
+			)).into());
 		} else {
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
@@ -500,10 +507,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	Ok(dom::Document::new_with_decl_dtd(
 		root_element.expect("logic error"),
 		decl,
-		match &dtds.is_empty(){
-			true => None,
-			false => Some(dtds)
-		}
+		Some(&dtds)
 	))
 }
 
@@ -540,18 +544,12 @@ fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
 /// finds next <> enclosed thing (or None if EoF is reached)
 fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 	let mut i = from;
-	let mut start: Option<usize> = None;
-	let mut end: Option<usize> = None;
-	while start.is_none() && i < buffer.len() {
-		if buffer[i] == '<' {
-			start = Some(i);
-		}
-		i += 1;
-	}
+	let mut start: Option<usize> = (&buffer[from..]).find("<")
+		.map(|i|i+from);
 	if start.is_none() {
 		return (None, None);
 	}
-	let start_index = start.unwrap();
+	let start_index = start.expect("logic error");
 	// the rules differ depending on the kind of tag
 	let sub_buffer = &buffer[start_index..];
 	if sub_buffer.starts_with("<!--") {

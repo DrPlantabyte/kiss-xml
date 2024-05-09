@@ -354,7 +354,7 @@ impl Element {
 		let mut elem = Self {
 			name: name.to_string(),
 			child_nodes: Vec::new(),
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None, false),
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
@@ -683,7 +683,7 @@ impl Element {
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
-		Self::xmlns_context_from_attributes(&self.attributes, None, false)
+		Self::xmlns_context_from_attributes(&self.attributes, None)
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
 	pub(crate) fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
