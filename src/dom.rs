@@ -330,14 +330,15 @@ impl Element {
 	* *children*: optional list of child nodes to add to this element
 	 */
 	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(
-		name: &str, text: Option<&str>,
+		name: impl Into<String>, text: Option<String>,
 		attributes: Option<HashMap<TEXT1, TEXT2>>,
-		xmlns: Option<&str>,
-		xmlns_prefix: Option<&str>,
+		xmlns: Option<String>,
+		xmlns_prefix: Option<String>,
 		children: Option<Vec<Box<dyn Node>>>
 	) -> Result<Self, KissXmlError> {
 		// sanity check
-		Element::check_elem_name(name)?;
+		let name = name.into();
+		Element::check_elem_name(name.as_str())?;
 		// first, convert attributes to <String,String> map
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
@@ -352,7 +353,7 @@ impl Element {
 		}
 		// set the XML NS from the attributes and provided args
 		let mut elem = Self {
-			name: name.to_string(),
+			name: name,
 			child_nodes: Vec::new(),
 			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
 			attributes: attrs,
@@ -398,8 +399,8 @@ impl Element {
 		Self::new(name, None, Some(attributes), None, None, None)
 	}
 	/// Creates a new Element with the specified name and text content
-	pub fn new_with_text(name: &str, text: &str) -> Result<Self, KissXmlError> {
-		Self::new(name, Some(text), Option::<HashMap<String,String>>::None, None, None, None)
+	pub fn new_with_text(name: &str, text: impl Into<String>) -> Result<Self, KissXmlError> {
+		Self::new(name, Some(text.into()), Option::<HashMap<String,String>>::None, None, None, None)
 	}
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
@@ -419,8 +420,8 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: &str) -> Result<Self, KissXmlError> {
-		Self::new(name, Some(text), Some(attributes), None, None, None)
+	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: impl Into<String>) -> Result<Self, KissXmlError> {
+		Self::new(name, Some(text.into()), Some(attributes), None, None, None)
 	}
 	/**
 	Creates a new Element with the specified name, attributes, and children.
@@ -1047,6 +1048,11 @@ impl Element {
 		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
+	}
+	/** This functions appends an Element child node and returns a mutable reference to the added Element (used by the parser to account for lifetimes) */
+	pub(crate) fn append_element_and_ref(&mut self, e: Element) -> &mut Element {
+		self.append(e);
+		self.child_nodes.last_mut().unwrap().as_element_mut().unwrap()
 	}
 	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {

@@ -211,33 +211,33 @@ pub fn unescape(text: impl Into<String>) -> String {
 			Some(i) => {
 				let i = i+last_i;
 				let start = i;
-				let slice = &buffer[i..];
+				let slice = (&buffer[i..]).to_string();
 				for (j, k) in slice.char_indices() {
 					if k == ';' {
 						let end = i + j + 1;
 						let slice = &slice[..j];
 						// note: trailing ; omitted from this slice
 						if slice == "&amp" {
-							buffer = string_insert(buffer.as_str(), (start, end), "&");
+							string_insert(&mut buffer, (start, end), "&");
 						}
 						if slice == "&lt" {
-							buffer = string_insert(buffer.as_str(), (start, end), "<");
+							string_insert(&mut buffer, (start, end), "<");
 						}
 						if slice == "&gt" {
-							buffer = string_insert(buffer.as_str(), (start, end), ">");
+							string_insert(&mut buffer, (start, end), ">");
 						}
 						if slice == "&apos" {
-							buffer = string_insert(buffer.as_str(), (start, end), "'");
+							string_insert(&mut buffer, (start, end), "'");
 						}
 						if slice == "&quot" {
-							buffer = string_insert(buffer.as_str(), (start, end), "\"");
+							string_insert(&mut buffer, (start, end), "\"");
 						}
 						if slice.starts_with("&#") {
 							match u32::from_str_radix(&slice[2..], 16) {
 								Ok(codepoint) => {
 									match char::from_u32(codepoint) {
 										Some(unicode) => {
-											buffer = string_insert(buffer.as_str(), (start, end), unicode.to_string().as_str());
+											string_insert(&mut buffer, (start, end), unicode.to_string().as_str());
 										},
 										None => { /* do nothing */ }
 									}
@@ -254,12 +254,12 @@ pub fn unescape(text: impl Into<String>) -> String {
 	buffer
 }
 
-/// replaces indices (a, b) in given string with a new string and returns the new string
-fn string_insert(buffer: &str, indices: (usize, usize), insert: &str) -> String{
-	let mut new_str = buffer[..indices.0].to_string();
-	new_str.push_str(insert);
-	new_str.push_str(&buffer[indices.1..]);
-	new_str
+/// replaces indices (a, b) in given string with a new string (in-place)
+fn string_insert(buffer: &mut String, indices: (usize, usize), insert: &str) {
+	let back = (&buffer[indices.1..]).to_string();
+	buffer.truncate(indices.0);
+	buffer.push_str(insert);
+	buffer.push_str(back.as_str());
 }
 
 /** Reads the file from the given filepath and parses it as an XML document
@@ -340,7 +340,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		} else {
 			// root element?
-			check_element_tag(slice).map_err(move |e| {
+			check_element_tag(slice).map_err(|e| {
 				let (line, col) = line_and_column(&buffer, tag_start);
 				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
@@ -353,7 +353,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
 	let mut root_element: Option<Element> = None;
-	let mut e_stack: Vec<&dom::Element> = Vec::new();
+	let mut e_stack: Vec<&mut dom::Element> = Vec::new();
 	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
 	loop {
 		// get text since last tag
@@ -380,7 +380,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else {
 			// element
 			// sanity check
-			check_element_tag(slice).map_err(move |e| {
+			check_element_tag(slice).map_err(|e| {
 				let (line, col) = line_and_column(&buffer, tag_span.0);
 				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
@@ -461,24 +461,17 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					};
 				}
 				let mut new_element = dom::Element::new(
-					name, None, Some(attrs), xmlns.map(|s| s.as_str()), xmlns_prefix.map(|s| s.as_str()), None
+					name, None, Some(attrs), xmlns, xmlns_prefix, None
 				)?;
 				new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
-				// push new element to stack if it is not self-closing
-				match slice.ends_with("/>") {
-					true => {
-						// self-closing tag, don't add to stack
-					}
-					false => e_stack.push(&new_element)
-				}
 				// append new element to parent
-				match e_stack.last_mut() {
-					None => {
-						// first element, no parent to add to, set root
-						root_element = Some(new_element);
-						e_stack.push(&new_element);
-					},
-					Some(parent) => parent.append(new_element)
+				if e_stack.is_empty() {
+					// first element, no parent to add to, set root
+					root_element = Some(new_element);
+					e_stack.push(&mut root_element.unwrap());
+				} else {
+					let parent = e_stack.last_mut().unwrap();
+					e_stack.push(parent.append_element_and_ref(new_element));
 				}
 			}
 		}
