@@ -159,7 +159,7 @@ as-is or with modification, without any limitations.
 
  */
 
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -167,6 +167,7 @@ use std::path::Path;
 use std::str::FromStr;
 use regex::Regex;
 use crate::dom::Element;
+use crate::errors::KissXmlError;
 
 pub mod errors;
 pub mod dom;
@@ -352,31 +353,21 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		tag_span = (tag_start, tag_end);
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
-	let mut root_element: Option<Element> = None;
+	let mut root_element: RefCell<Option<Element>> = RefCell::new(None);
 	let mut e_stack: Vec<&mut dom::Element> = Vec::new();
 	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
 	loop {
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
-		// if text is not empty, add text node
-		match real_text(text) {
-			None => {},
-			Some(content) => {
-				e_stack.last_mut().unwrap().append(dom::Text::new(content))
-			}
-		};
+		handle_text(text, &mut e_stack)?;
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
-			let c = dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]);
-			e_stack.last_mut().unwrap().append(c)
+			handle_comment(slice, &mut e_stack)?;
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
-			let (line, col) = line_and_column(&buffer, tag_span.0);
-			return Err(errors::NotSupportedError::new(format!(
-				"error on line {line}, column {col}: kiss-xml does not support '{slice}'"
-			)).into());
+			handle_special(slice, &mut e_stack, &buffer, &tag_span)?;
 		} else {
 			// element
 			// sanity check
@@ -388,91 +379,16 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			})?;
 			// is it a closing tag? If so, pop the parent stack
 			if slice.starts_with("</") {
-				let tagname = strip_tag(slice);
-				if e_stack.len() == 0 {
-					let (line, col) = line_and_column(&buffer, tag_span.0);
-					return Err(errors::ParsingError::new(format!(
-						"invalid XML syntax on line {line}, column {col}: cannot start with a closing tag"
-					)).into());
-				}
-				let open_tagname = e_stack.last().unwrap().tag_name();
-				if tagname != open_tagname {
-					let (line, col) = line_and_column(&buffer, tag_span.0);
-					return Err(errors::ParsingError::new(format!(
-						"invalid XML syntax on line {line}, column {col}: closing tag {slice} does not match <{open_tagname}>"
-					)).into());
-				}
-				e_stack.pop();
+				handle_closing_tag(slice, &mut e_stack, &buffer, &tag_span)?;
 				// check end condition
-				if e_stack.is_empty(){
+				if (&e_stack).is_empty(){
 					break;
 				}
 			} else {
 				// add new element to the stack
-				let tag_content = strip_tag(slice);
-				let components = quote_aware_split(tag_content.as_str());
-				if components.len() == 0 {
-					let (line, col) = line_and_column(&buffer, tag_span.0);
-					return Err(errors::ParsingError::new(format!(
-						"invalid XML syntax on line {line}, column {col}: empty tags not supported"
-					)).into());
-				}
-				// parse attributes
-				let mut attrs: HashMap<String, String> = HashMap::new();
-				for i in 1..components.len() {
-					let kv = &components[i];
-					if !kv.contains("=") {
-						let (line, col) = line_and_column(&buffer, tag_span.0);
-						return Err(errors::ParsingError::new(format!(
-							"invalid XML syntax on line {line}, column {col}: attributes must be in the form 'key=\"value\"'"
-						)).into());
-					}
-					let (k, mut v) = kv.split_once("=").unwrap();
-					// note: v string contains enclosing quotes
-					v = &v[1..(v.len()-1)]; // remove quotes
-					attrs.insert(k.to_string(), v.to_string());
-				}
-				// parse name and namespace
-				let mut name = components[0].as_str();
-				let mut xmlns: Option<String> = None;
-				let mut xmlns_prefix: Option<String> = None;
-				// check parent for inherited namespaces
-				let (inherited_default_namespace, inherited_xmlns_context) = match e_stack.last() {
-					None => (None, None),
-					Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
-				};
-				if name.contains(":"){
-					let (a, b) = name.split_once(":").unwrap();
-					name = b;
-					xmlns_prefix = Some(a.to_string());
-					// check if the prefix is in attributes or inherited from parent
-					let prefix_key = format!("xmlns:{a}");
-					xmlns = match attrs.contains_key(&prefix_key){
-						true => attrs.get(prefix_key.as_str()).map(String::clone),
-						false => match &inherited_xmlns_context{
-							None => {
-								let (line, col) = line_and_column(&buffer, tag_span.0);
-								return Err(errors::ParsingError::new(format!(
-									"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
-								)).into());
-							}
-							Some(ctx) => {ctx.get(prefix_key.as_str()).map(String::clone)}
-						}
-					};
-				}
-				let mut new_element = dom::Element::new(
-					name, None, Some(attrs), xmlns, xmlns_prefix, None
-				)?;
-				new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
+				let new_element = handle_new_element(slice, &mut e_stack, &buffer, &tag_span)?;
 				// append new element to parent
-				if e_stack.is_empty() {
-					// first element, no parent to add to, set root
-					root_element = Some(new_element);
-					e_stack.push(&mut root_element.unwrap());
-				} else {
-					let parent = e_stack.last_mut().unwrap();
-					e_stack.push(parent.append_element_and_ref(new_element));
-				}
+				handle_push_new_element(new_element, &mut root_element, &mut e_stack)
 			}
 		}
 		// find next tag, repeat
@@ -491,17 +407,133 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		}
 	}
 	// error check
-	if root_element.is_none() {
+	if root_element.borrow().is_none() {
 		return Err(errors::ParsingError::new(format!(
 			"invalid XML syntax: no root element"
 		)).into())
 	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
-		root_element.expect("logic error"),
+		root_element.take().expect("logic error"),
 		decl,
 		Some(&dtds)
 	))
+}
+
+// NOTE: the handle_*() functions were created to work around Rust's limited
+// syntax rules for reborrowing (lifetime rules can only be explicitly defined
+// at the function level, not within an arbitrary code block
+/// handles text since last node in parsing
+fn handle_text(text: &str, e_stack: &mut Vec<&mut dom::Element>) -> Result<(), KissXmlError> {
+	// if text is not empty, add text node
+	match real_text(text) {
+		None => {},
+		Some(content) => {
+			e_stack.last_mut().unwrap().append(dom::Text::new(content))
+		}
+	};
+	Ok(())
+}
+/// handles comment
+fn handle_comment(slice: &str, e_stack: &mut Vec<&mut dom::Element>) -> Result<(), KissXmlError> {
+	let c = dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]);
+	e_stack.last_mut().unwrap().append(c);
+	Ok(())
+}
+/// handles <!stuff>
+fn handle_special(slice: &str, _e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<(), KissXmlError> {
+	let (line, col) = line_and_column(&buffer, tag_span.0);
+	return Err(errors::NotSupportedError::new(format!(
+		"error on line {line}, column {col}: kiss-xml does not support '{slice}'"
+	)).into());
+}
+/// handles closing tag
+fn handle_closing_tag(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<(), KissXmlError> {
+	let tagname = strip_tag(slice);
+	if e_stack.len() == 0 {
+		let (line, col) = line_and_column(&buffer, tag_span.0);
+		return Err(errors::ParsingError::new(format!(
+			"invalid XML syntax on line {line}, column {col}: cannot start with a closing tag"
+		)).into());
+	}
+	let open_tagname = e_stack.last().unwrap().tag_name();
+	if tagname != open_tagname {
+		let (line, col) = line_and_column(&buffer, tag_span.0);
+		return Err(errors::ParsingError::new(format!(
+			"invalid XML syntax on line {line}, column {col}: closing tag {slice} does not match <{open_tagname}>"
+		)).into());
+	}
+	e_stack.pop();
+	Ok(())
+}
+/// handles new element
+fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<Element, KissXmlError> {
+	let tag_content = strip_tag(slice);
+	let components = quote_aware_split(tag_content.as_str());
+	if components.len() == 0 {
+		let (line, col) = line_and_column(&buffer, tag_span.0);
+		return Err(errors::ParsingError::new(format!(
+			"invalid XML syntax on line {line}, column {col}: empty tags not supported"
+		)).into());
+	}
+	// parse attributes
+	let mut attrs: HashMap<String, String> = HashMap::new();
+	for i in 1..components.len() {
+		let kv = &components[i];
+		if !kv.contains("=") {
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}: attributes must be in the form 'key=\"value\"'"
+			)).into());
+		}
+		let (k, mut v) = kv.split_once("=").unwrap();
+		// note: v string contains enclosing quotes
+		v = &v[1..(v.len()-1)]; // remove quotes
+		attrs.insert(k.to_string(), v.to_string());
+	}
+	// parse name and namespace
+	let mut name = components[0].as_str();
+	let mut xmlns: Option<String> = None;
+	let mut xmlns_prefix: Option<String> = None;
+	// check parent for inherited namespaces
+	let (inherited_default_namespace, inherited_xmlns_context) = match e_stack.last() {
+		None => (None, None),
+		Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
+	};
+	if name.contains(":"){
+		let (a, b) = name.split_once(":").unwrap();
+		name = b;
+		xmlns_prefix = Some(a.to_string());
+		// check if the prefix is in attributes or inherited from parent
+		let prefix_key = format!("xmlns:{a}");
+		xmlns = match attrs.contains_key(&prefix_key){
+			true => attrs.get(prefix_key.as_str()).map(String::clone),
+			false => match &inherited_xmlns_context{
+				None => {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
+					)).into());
+				}
+				Some(ctx) => {ctx.get(prefix_key.as_str()).map(String::clone)}
+			}
+		};
+	}
+	let mut new_element = dom::Element::new(
+		name, None, Some(attrs), xmlns, xmlns_prefix, None
+	)?;
+	new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
+	Ok(new_element)
+}
+/// continues from `handle_new_element(...)`
+fn handle_push_new_element<'a>(new_element: Element, root_element: &mut RefCell<Option<Element>>, e_stack: &'a mut Vec<&'a mut dom::Element>){
+	if root_element.borrow().is_none() {
+		root_element.replace(Some(new_element));
+		e_stack.push(&mut root_element.borrow_mut().unwrap());
+	} else {
+		let parent = e_stack.last_mut().unwrap();
+		e_stack.push(parent.append_element_and_ref(new_element));
+	}
 }
 
 /// removes leading and trailing <> and/or /
@@ -667,7 +699,7 @@ fn real_text(text: &str) -> Option<String> {
 	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
 	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
 	let text = matcher.replace(text, "\n");
-	Some(text.trim_start().to_string())
+	Some(unescape(text.trim_start()))
 }
 
 /// get line and column number for index to use for error reporting
