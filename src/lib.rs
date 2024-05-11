@@ -359,7 +359,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	loop {
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
-		handle_text(text, &mut e_stack)?;
+		{
+			let esr = &mut e_stack;
+			handle_text(text, esr)?;
+		}
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
