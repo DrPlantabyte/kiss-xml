@@ -166,7 +166,6 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 use regex::Regex;
-use crate::dom::Element;
 use crate::errors::KissXmlError;
 
 pub mod errors;
@@ -353,24 +352,22 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		tag_span = (tag_start, tag_end);
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
-	let mut root_element: RefCell<Option<Element>> = RefCell::new(None);
-	let mut e_stack: Vec<&mut dom::Element> = Vec::new();
+	let mut root_element: dom::Element = dom::Element::new_from_name("dummy")?;
+	let mut e_count: usize = 0;
+	let e_stack: RefCell<Vec<&mut dom::Element>> = RefCell::new(Vec::new());
 	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
 	loop {
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
-		{
-			let esr = &mut e_stack;
-			handle_text(text, esr)?;
-		}
+		handle_text(text, e_stack.borrow_mut().as_mut())?;
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
-			handle_comment(slice, &mut e_stack)?;
+			handle_comment(slice, e_stack.borrow_mut().as_mut())?;
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
-			handle_special(slice, &mut e_stack, &buffer, &tag_span)?;
+			handle_special(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
 		} else {
 			// element
 			// sanity check
@@ -382,16 +379,26 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			})?;
 			// is it a closing tag? If so, pop the parent stack
 			if slice.starts_with("</") {
-				handle_closing_tag(slice, &mut e_stack, &buffer, &tag_span)?;
+				handle_closing_tag(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
 				// check end condition
-				if (&e_stack).is_empty(){
+				if e_stack.borrow().is_empty(){
 					break;
 				}
 			} else {
 				// add new element to the stack
-				let new_element = handle_new_element(slice, &mut e_stack, &buffer, &tag_span)?;
-				// append new element to parent
-				handle_push_new_element(new_element, &mut root_element, &mut e_stack)
+				let new_element = handle_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
+				if e_count == 0 {
+					// root element
+					root_element = new_element;
+					if slice.ends_with("/>") {
+						// self-closing root element
+						break;
+					}
+					e_stack.borrow_mut().push(&mut root_element);
+				} else {
+					let parent = *e_stack.borrow_mut().last_mut().unwrap();
+					e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
+				}
 			}
 		}
 		// find next tag, repeat
@@ -408,6 +415,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else {
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
+		e_count += 1;
 	}
 	// error check
 	if root_element.borrow().is_none() {
@@ -528,16 +536,7 @@ fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer:
 	new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
 	Ok(new_element)
 }
-/// continues from `handle_new_element(...)`
-fn handle_push_new_element<'a>(new_element: Element, root_element: &mut RefCell<Option<Element>>, e_stack: &'a mut Vec<&'a mut dom::Element>){
-	if root_element.borrow().is_none() {
-		root_element.replace(Some(new_element));
-		e_stack.push(&mut root_element.borrow_mut().unwrap());
-	} else {
-		let parent = e_stack.last_mut().unwrap();
-		e_stack.push(parent.append_element_and_ref(new_element));
-	}
-}
+
 
 /// removes leading and trailing <> and/or /
 fn strip_tag(tag: &str) -> String {
