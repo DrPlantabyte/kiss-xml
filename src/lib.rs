@@ -353,7 +353,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
 	let mut root_element: dom::Element = dom::Element::new_from_name("dummy")?;
-	let mut e_count: usize = 0;
+	let mut root_set: bool = false;
 	let e_stack: RefCell<Vec<&mut dom::Element>> = RefCell::new(Vec::new());
 	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
 	loop {
@@ -387,9 +387,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			} else {
 				// add new element to the stack
 				let new_element = handle_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
-				if e_count == 0 {
+				if !root_set {
 					// root element
 					root_element = new_element;
+					root_set = true;
 					if slice.ends_with("/>") {
 						// self-closing root element
 						break;
@@ -415,10 +416,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else {
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
-		e_count += 1;
 	}
 	// error check
-	if root_element.borrow().is_none() {
+	if !root_set {
 		return Err(errors::ParsingError::new(format!(
 			"invalid XML syntax: no root element"
 		)).into())
