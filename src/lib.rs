@@ -397,7 +397,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					}
 					e_stack.borrow_mut().push(&mut root_element);
 				} else {
-					let parent = *e_stack.borrow_mut().last_mut().unwrap();
+					let parent = e_stack.borrow_mut().last_mut().unwrap();
 					e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
 				}
 			}
@@ -425,7 +425,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
-		root_element.take().expect("logic error"),
+		root_element,
 		decl,
 		Some(&dtds)
 	))
@@ -478,7 +478,7 @@ fn handle_closing_tag(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer:
 	Ok(())
 }
 /// handles new element
-fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<Element, KissXmlError> {
+fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<dom::Element, KissXmlError> {
 	let tag_content = strip_tag(slice);
 	let components = quote_aware_split(tag_content.as_str());
 	if components.len() == 0 {
