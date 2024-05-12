@@ -352,11 +352,27 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		tag_span = (tag_start, tag_end);
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
-	let mut root_element: dom::Element = dom::Element::new_from_name("dummy")?;
-	let mut root_set: bool = false;
 	let e_stack: RefCell<Vec<&mut dom::Element>> = RefCell::new(Vec::new());
-	let mut last_span: (usize, usize) = (tag_span.0, tag_span.0);
+	let root_slice = &buffer[tag_span.0 .. tag_span.1];
+	let mut root_element: dom::Element = handle_new_element(root_slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
+	e_stack.borrow_mut().push(&mut root_element);
+	let mut last_span: (usize, usize) = (tag_span.0, tag_span.1);
 	loop {
+		// find next tag
+		let next_span = next_tag(&buffer, tag_span.1);
+		if next_span.0.is_none() {
+			// EoF
+			break
+		} else if next_span.1.is_none() {
+			// broken tag?
+			let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}"
+			)).into());
+		} else {
+			last_span = tag_span;
+			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
+		}
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
 		handle_text(text, e_stack.borrow_mut().as_mut())?;
@@ -387,41 +403,13 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			} else {
 				// add new element to the stack
 				let new_element = handle_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
-				if !root_set {
-					// root element
-					root_element = new_element;
-					root_set = true;
-					if slice.ends_with("/>") {
-						// self-closing root element
-						break;
-					}
-					e_stack.borrow_mut().push(&mut root_element);
-				} else {
-					let parent = e_stack.borrow_mut().last_mut().unwrap();
-					e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
-				}
+				let mut tmp = &mut e_stack.borrow_mut();
+				let parent = tmp.last_mut().unwrap();
+				e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
+
 			}
 		}
-		// find next tag, repeat
-		let next_span = next_tag(&buffer, tag_span.1);
-		if next_span.0.is_none() {
-			// EoF
-			break
-		} else if next_span.1.is_none() {
-			// broken tag?
-			let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}"
-			)).into());
-		} else {
-			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
-		}
-	}
-	// error check
-	if !root_set {
-		return Err(errors::ParsingError::new(format!(
-			"invalid XML syntax: no root element"
-		)).into())
+		// repeat
 	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
