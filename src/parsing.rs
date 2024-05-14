@@ -6,23 +6,83 @@ use std::hash::Hasher;
  */
 
 use crate::dom::*;
+use crate::errors::*;
 
-/** special tree data structure for parsing which uses ID's as keys in a HashMap to work around limitations in Rust's lifetime syntax */
+/** special tree data structure for parsing which uses ID's as keys in a HashMap to work around limitations in Rust's lifetime syntax. It is used like a stack, though internally it uses a HashMap based data arena */
+#[derive(Debug, Clone, Default)]
 pub struct ParseTree{
 	/** hold data in a non-tree format because Rust's lifetime syntax doesn't let you retrieve the lifetime from the parent of a node at runtime (lifetimes exist only at compile time, and even then there is no syntax for separately disentanlging reference-lifetimes from data-lifetimes) */
 	data: HashMap<usize, ParseTreeNode>,
-	/// current tip of the parsing tree
-	pos: usize
+	/// current tip of the parsing tree, pointing to the "top" of the stack
+	pos: Option<usize>
 }
 
 impl ParseTree {
-	pub fn new() -> Self{
+	/// new parser tree
+	pub fn new() -> Self {
+		Self::default()
+	}
+	/// push a new element to the stack
+	pub fn push(&mut self, new_element: Element) {
+		if &self.pos.is_none() {
+			self.data.insert(0, ParseTreeNode{
+				id: 0,
+				value: Box::new(new_element),
+				parent_id: None,
+				child_ids: Vec::new(),
+			});
+			self.pos = Some(0);
+		} else {
+			let old_pos = self.pos.unwrap();
+			let new_pos = old_pos + 1;
+			self.data.get_mut(&old_pos).expect("logic error")
+				.child_ids.push(new_pos);
+			self.data.insert(0, ParseTreeNode{
+				id: new_pos,
+				value: Box::new(new_element),
+				parent_id: Some(old_pos),
+				child_ids: Vec::new(),
+			});
+			self.pos = Some(new_pos);
+		}
+	}
+	/// pop the top element from the stack
+	pub fn pop(&mut self) -> Result<(), KissXmlError> {
+		if self.pos.is_none() {
+			return Err(ParsingError::new("closing tag without corresponding open tag").into());
+		}
+		let pos = self.pos.unwrap();
+		let new_pos = self.data
+			.get(&pos).expect("logic error").parent_id;
+		self.pos = new_pos;
+		Ok(())
+	}
+	/// append a node to the top element on the stack (without adding the new node to the stack)
+	pub fn append(&mut self, n: impl Node) -> Result<(), KissXmlError> {
+		if self.pos.is_none() {
+			return Err(ParsingError::new("no root element").into());
+		}
+		let pos = self.pos.unwrap();
+		todo!()
+	}
+	/// tag name (eg "head" or "svg:g") of the top element on the stack
+	pub fn current_tag_name(&self) -> Result<String, KissXmlError> {
+		match self.pos{
+			None => Err(ParsingError::new("no root element").into()),
+			Some(pos) => Ok(self.data.get(&pos).expect("logic error").value.tag_name())
+		}
+	}
+	/// converts the whole parse tree to a DOM, returning the root element
+	pub fn to_dom(mut self) -> Result<Element, KissXmlError> {
+		if self.pos.is_none() {
+			return Err(ParsingError::new("no root element").into());
+		}
 		todo!()
 	}
 }
 
 /** nodes in the parser tree */
-#[derive(Clone, Debug, Eq, Ord)]
+#[derive(Clone, Debug)]
 pub struct ParseTreeNode{
 	/// unique ID
 	id: usize,
@@ -34,18 +94,24 @@ pub struct ParseTreeNode{
 	child_ids: Vec<usize>
 }
 
-impl PartialEq for ParseTreeNode{
+impl PartialEq for ParseTreeNode {
 	fn eq(&self, other: &Self) -> bool {
 		self.id == other.id
 	}
 }
-impl std::hash::Hash for ParseTreeNode{
+impl Eq for ParseTreeNode{}
+impl std::hash::Hash for ParseTreeNode {
 	fn hash<H: Hasher>(&self, state: &mut H) {
 		self.id.hash(state)
 	}
 }
-impl PartialOrd for ParseTreeNode{
+impl PartialOrd for ParseTreeNode {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.id.partial_cmp(&other.id)
+		Some(self.id.cmp(&other.id))
+	}
+}
+impl Ord for ParseTreeNode{
+	fn cmp(&self, other: &Self) -> Ordering {
+		self.partial_cmp(other).unwrap()
 	}
 }
