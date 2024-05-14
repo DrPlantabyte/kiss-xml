@@ -170,6 +170,7 @@ use crate::errors::KissXmlError;
 
 pub mod errors;
 pub mod dom;
+mod parsing;
 
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
@@ -524,7 +525,6 @@ fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer:
 	new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
 	Ok(new_element)
 }
-
 
 /// removes leading and trailing <> and/or /
 fn strip_tag(tag: &str) -> String {
