@@ -34,10 +34,10 @@ impl ParseTree {
 			self.pos = Some(0);
 		} else {
 			let old_pos = self.pos.unwrap();
-			let new_pos = old_pos + 1;
+			let new_pos = self.data.len();
 			self.data.get_mut(&old_pos).expect("logic error")
 				.child_ids.push(new_pos);
-			self.data.insert(0, ParseTreeNode{
+			self.data.insert(new_pos, ParseTreeNode{
 				id: new_pos,
 				value: Box::new(new_element),
 				parent_id: Some(old_pos),
@@ -63,7 +63,16 @@ impl ParseTree {
 			return Err(ParsingError::new("no root element").into());
 		}
 		let pos = self.pos.unwrap();
-		todo!()
+		let new_id = self.data.len();
+		self.data.get_mut(&pos).expect("logic error")
+			.child_ids.push(new_id);
+		self.data.insert(new_id, ParseTreeNode{
+			id: new_id,
+			value: Box::new(n),
+			parent_id: Some(pos),
+			child_ids: Vec::new(),
+		});
+		Ok(())
 	}
 	/// tag name (eg "head" or "svg:g") of the top element on the stack
 	pub fn current_tag_name(&self) -> Result<String, KissXmlError> {
@@ -74,10 +83,32 @@ impl ParseTree {
 	}
 	/// converts the whole parse tree to a DOM, returning the root element
 	pub fn to_dom(mut self) -> Result<Element, KissXmlError> {
-		if self.pos.is_none() {
+		if self.pos.is_none() || self.data.is_empty() {
 			return Err(ParsingError::new("no root element").into());
 		}
-		todo!()
+		// depth-first DOM construction
+		// the stack-based API ensures children always have higher ID number
+		// than their parents
+		// the challenge is that reverse index iteration will add children
+		// in opposite order
+		// solution is to flip the children when removing from the map
+		// (index 0 is root, so not included in loop)
+		for i in (1..self.data.len()).rev() {
+			let mut node = self.data.remove(&i).expect("logic error: missing index");
+			if node.value.is_element() {
+				// flip the children of element
+				node.value.as_element_mut().unwrap().reverse_children()
+			}
+			let parent_index = node.parent_id.expect("logic error: non-root node with no parent");
+			self.data.get_mut(&parent_index).expect("logic error: parent is missing")
+				.value.as_element_mut().expect("logic error: parent is not an Element")
+				.append(node.value);
+		}
+		let mut root = self.data.remove(&0).expect("logic error: no root element");
+		// flip children because they were added in reverse order
+		root.value.as_element_mut().unwrap().reverse_children();
+		// done
+		return Ok(root.value.to_element().unwrap());
 	}
 }
 

@@ -353,7 +353,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		tag_span = (tag_start, tag_end);
 	}
 	// now parse the elements, keeping a stack of parents as the tree is traversed
-	let e_stack: RefCell<Vec<&mut dom::Element>> = RefCell::new(Vec::new());
+	let mut parse_stack = parsing::ParseTree::new();
 	let root_slice = &buffer[tag_span.0 .. tag_span.1];
 	let mut root_element: dom::Element = handle_new_element(root_slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
 	e_stack.borrow_mut().push(&mut root_element);
@@ -414,7 +414,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
-		root_element,
+		parse_stack.to_dom()?,
 		decl,
 		Some(&dtds)
 	))

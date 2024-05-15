@@ -257,6 +257,20 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError>;
+	/**
+	Irreversibly casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn to_element(self) -> Result<Element, TypeCastError>;
+
+	/**
+	Irreversibly casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn to_comment(self) -> Result<Comment, TypeCastError>;
+
+	/**
+	Irreversibly casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn to_text(self) -> Result<Text, TypeCastError>;
 
 	/**
 	Casts this struct to a Node trait object
@@ -715,6 +729,10 @@ impl Element {
 				}
 			}
 		}
+	}
+	/** flips the order of child nodes (non-recursive) */
+	pub(crate) fn reverse_children(&mut self) {
+		self.child_nodes.reverse();
 	}
 	/** Returns a list of al child elements as an iterator */
 	pub fn child_elements(&self) ->  impl Iterator<Item = &Element>{
@@ -1328,9 +1346,17 @@ impl Node for Element {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
 
+	fn to_element(self) -> Result<Element, TypeCastError> {Ok(self)}
+
+
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
+	fn to_comment(&self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+
+
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+
+	fn to_text(&self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
 
@@ -1488,9 +1514,17 @@ impl Node for Text {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
+	fn to_element(self) -> Result<Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
+
+
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
+	fn to_comment(self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
+
+
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
+
+	fn to_text(self) -> Result<Text, TypeCastError> {Ok(self)}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
@@ -1577,9 +1611,17 @@ impl Node for Comment {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
+	fn to_element(self) -> Result<Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
+
+
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
 
+	fn to_comment(self) -> Result<Comment, TypeCastError> {Ok(self)}
+
+
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+
+	fn to_text(self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
