@@ -435,7 +435,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						)).into())
 					})?;
 				let open_tagname = active_element.tag_name();
-				if strip_tag(slice) !=open_tagname {
+				if strip_tag(slice) != open_tagname {
 					let (line, col) = line_and_column(&buffer, tag_span.0);
 					return Err(errors::ParsingError::new(format!(
 						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
@@ -443,11 +443,8 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				}
 			} else {
 				// add new element to the stack
-				let new_element = parse_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
-				let mut tmp = &mut e_stack.borrow_mut();
-				let parent = tmp.last_mut().unwrap();
-				e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
-
+				let new_element = parse_new_element(slice, &buffer, &tag_span, parse_stack.top_element())?;
+				parse_stack.push(new_element);
 			}
 		}
 		// repeat
@@ -471,25 +468,7 @@ fn abbreviate(text: &str, limit: usize) -> String {
 		buffer
 	}
 }
-/// handles closing tag
-fn handle_closing_tag(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<(), KissXmlError> {
-	let tagname = strip_tag(slice);
-	if e_stack.len() == 0 {
-		let (line, col) = line_and_column(&buffer, tag_span.0);
-		return Err(errors::ParsingError::new(format!(
-			"invalid XML syntax on line {line}, column {col}: cannot start with a closing tag"
-		)).into());
-	}
-	let open_tagname = e_stack.last().unwrap().tag_name();
-	if tagname != open_tagname {
-		let (line, col) = line_and_column(&buffer, tag_span.0);
-		return Err(errors::ParsingError::new(format!(
-			"invalid XML syntax on line {line}, column {col}: closing tag {slice} does not match <{open_tagname}>"
-		)).into());
-	}
-	e_stack.pop();
-	Ok(())
-}
+
 /// handles new element
 fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
 	let tag_content = strip_tag(slice);

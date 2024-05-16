@@ -1351,12 +1351,12 @@ impl Node for Element {
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
-	fn to_comment(&self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+	fn to_comment(self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
-	fn to_text(&self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+	fn to_text(self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
 

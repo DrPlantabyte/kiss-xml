@@ -24,7 +24,7 @@ impl ParseTree {
 	}
 	/// push a new element to the stack
 	pub fn push(&mut self, new_element: Element) {
-		if &self.pos.is_none() {
+		if self.pos.is_none() {
 			self.data.insert(0, ParseTreeNode{
 				id: 0,
 				value: Box::new(new_element),
