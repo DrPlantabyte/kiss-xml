@@ -392,9 +392,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				parse_stack.append(dom::Text::new(content))
 					.map_err(|e|{
 						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-						Err(errors::ParsingError::new(format!(
+						errors::ParsingError::new(format!(
 							"{} (syntax error on line {line}, column {col})", e
-						)).into())
+						)).into()
 					})?;
 			}
 		};

@@ -9,7 +9,7 @@ use crate::dom::*;
 use crate::errors::*;
 
 /** special tree data structure for parsing which uses ID's as keys in a HashMap to work around limitations in Rust's lifetime syntax. It is used like a stack, though internally it uses a HashMap based data arena */
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct ParseTree{
 	/** hold data in a non-tree format because Rust's lifetime syntax doesn't let you retrieve the lifetime from the parent of a node at runtime (lifetimes exist only at compile time, and even then there is no syntax for separately disentanlging reference-lifetimes from data-lifetimes) */
 	data: HashMap<usize, ParseTreeNode>,
@@ -105,7 +105,7 @@ impl ParseTree {
 			let parent_index = node.parent_id.expect("logic error: non-root node with no parent");
 			self.data.get_mut(&parent_index).expect("logic error: parent is missing")
 				.value.as_element_mut().expect("logic error: parent is not an Element")
-				.append(node.value);
+				.append_boxed(node.value);
 		}
 		let mut root = self.data.remove(&0).expect("logic error: no root element");
 		// flip children because they were added in reverse order
@@ -116,7 +116,7 @@ impl ParseTree {
 }
 
 /** nodes in the parser tree */
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ParseTreeNode{
 	/// unique ID
 	id: usize,

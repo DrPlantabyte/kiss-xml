@@ -1051,8 +1051,12 @@ impl Element {
 	 */
 	pub fn append(&mut self, node: impl Node) {
 		// Note: if this is an element, set the namespace context
+		self.append_boxed(node.boxed());
+	}
+	/** same as `.append(...)` but for a Box<dyn Node> */
+	pub fn append_boxed(&mut self, node: Box<dyn Node>) {
 		let is_element = node.is_element();
-		self.child_nodes.push(node.boxed());
+		self.child_nodes.push(node);
 		if is_element {
 			let df_xmlns = self.default_namespace().clone();
 			let xmlns_context = self.get_namespace_context().clone();
@@ -1067,6 +1071,7 @@ impl Element {
 		// clean-up text nodes
 		self.cleanup_text_nodes();
 	}
+
 	/** This functions appends an Element child node and returns a mutable reference to the added Element (used by the parser to account for lifetimes) */
 	pub(crate) fn append_element_and_ref(&mut self, e: Element) -> &mut Element {
 		self.append(e);
