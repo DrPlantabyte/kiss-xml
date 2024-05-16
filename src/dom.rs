@@ -34,6 +34,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 
 */
 
+use std::any::Any;
 use std::cell::OnceCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -257,20 +258,6 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError>;
-	/**
-	Irreversibly casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
-	 */
-	fn to_element(self) -> Result<Element, TypeCastError>;
-
-	/**
-	Irreversibly casts this Node to a Comment struct (if the Node is not an Comment struct, then `Err(TypeCastError)` error result is returned).
-	 */
-	fn to_comment(self) -> Result<Comment, TypeCastError>;
-
-	/**
-	Irreversibly casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
-	 */
-	fn to_text(self) -> Result<Text, TypeCastError>;
 
 	/**
 	Casts this struct to a Node trait object
@@ -281,6 +268,16 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	Casts this struct to a Node trait object
 	 */
 	fn as_node_mut(&mut self) -> &mut dyn Node;
+
+	/**
+	Allows for run-time type casting with the `Any` trait
+	 */
+	fn as_any(&self) -> &dyn Any;
+
+	/**
+	Allows for run-time type casting with the `Any` trait
+	 */
+	fn as_any_mut(&mut self) -> &mut dyn Any;
 
 	/**
 	Writes this Node to a string with the provided indent (used to serialize to XML)
@@ -1351,17 +1348,9 @@ impl Node for Element {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
 
-	fn to_element(self) -> Result<Element, TypeCastError> {Ok(self)}
-
-
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
-	fn to_comment(self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
-
-
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
-
-	fn to_text(self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
 
@@ -1372,6 +1361,10 @@ impl Node for Element {
 	fn as_node(&self) -> &dyn Node {self}
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
+	fn as_any(&self) -> &dyn Any {self}
+
+	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, indent: &str) -> String {
 		self.to_string_with_prefix_and_indent("", indent)
@@ -1519,17 +1512,9 @@ impl Node for Text {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
-	fn to_element(self) -> Result<Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
-
-
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
-	fn to_comment(self) -> Result<Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
-
-
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
-
-	fn to_text(self) -> Result<Text, TypeCastError> {Ok(self)}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
@@ -1540,6 +1525,10 @@ impl Node for Text {
 	fn as_node(&self) -> &dyn Node {self}
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
+	fn as_any(&self) -> &dyn Any {self}
+
+	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
 		self.content.clone()
@@ -1616,17 +1605,9 @@ impl Node for Comment {
 
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
-	fn to_element(self) -> Result<Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
-
-
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
 
-	fn to_comment(self) -> Result<Comment, TypeCastError> {Ok(self)}
-
-
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
-
-	fn to_text(self) -> Result<Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
 
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
@@ -1637,6 +1618,10 @@ impl Node for Comment {
 	fn as_node(&self) -> &dyn Node {self}
 
 	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
+	fn as_any(&self) -> &dyn Any {self}
+
+	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
 		format!("<!--{}-->", self.content)

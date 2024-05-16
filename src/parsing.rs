@@ -58,7 +58,7 @@ impl ParseTree {
 		Ok(())
 	}
 	/// append a node to the top element on the stack (without adding the new node to the stack)
-	pub fn append(&mut self, n: impl Node) -> Result<(), KissXmlError> {
+	pub fn append(&mut self, n: impl Node + 'static) -> Result<(), KissXmlError> {
 		if self.pos.is_none() {
 			return Err(ParsingError::new("no root element").into());
 		}
@@ -107,11 +107,16 @@ impl ParseTree {
 				.value.as_element_mut().expect("logic error: parent is not an Element")
 				.append_boxed(node.value);
 		}
-		let mut root = self.data.remove(&0).expect("logic error: no root element");
+		let mut root_node = self.data.remove(&0).expect("logic error: no root element");
+		let mut root = root_node.destruct();
+		// let mut e = **(root.as_any()
+		// 	.downcast_ref::<Box<Element>>()
+		// 	.expect("logic error: root is not an element"));
+		let e = root.as_element_mut().expect("logic error: root is not an element");
 		// flip children because they were added in reverse order
-		root.value.as_element_mut().unwrap().reverse_children();
+		e.reverse_children();
 		// done
-		return Ok(root.value.to_element().unwrap());
+		return Ok(e);
 	}
 }
 
@@ -126,6 +131,11 @@ pub struct ParseTreeNode{
 	parent_id: Option<usize>,
 	/// children of this DOM element
 	child_ids: Vec<usize>
+}
+
+impl ParseTreeNode {
+	/// used to move the value out of the struct
+	fn destruct(self) -> Box<dyn Node>{self.value}
 }
 
 impl PartialEq for ParseTreeNode {
