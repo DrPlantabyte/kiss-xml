@@ -59,7 +59,10 @@ pub struct ParsingError {
 impl ParsingError{
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		let mut m = msg.into();
+		// parsing error messages may be nested, make them pretty
+		m = m.trim_start_matches("ParsingError: ").to_string();
+		Self{msg: m}
 	}
 	/// Formats and prints the error message
 	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

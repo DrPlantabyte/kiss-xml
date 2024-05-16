@@ -74,11 +74,14 @@ impl ParseTree {
 		});
 		Ok(())
 	}
-	/// tag name (eg "head" or "svg:g") of the top element on the stack
-	pub fn current_tag_name(&self) -> Result<String, KissXmlError> {
-		match self.pos{
-			None => Err(ParsingError::new("no root element").into()),
-			Some(pos) => Ok(self.data.get(&pos).expect("logic error").value.tag_name())
+	/// reference to the current element on top of the stack
+	pub fn top_element(&self) -> Option<&Element> {
+		match self.pos {
+			None => None,
+			Some(pos) => Some(
+				self.data.get(&pos).expect("logic error")
+					.value.as_element().expect("logic error")
+			)
 		}
 	}
 	/// converts the whole parse tree to a DOM, returning the root element

@@ -299,7 +299,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		if tag_end.is_none(){
 			let (line, col) = line_and_column(&buffer, tag_start.unwrap());
 			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}: '<' has not matching '>'"
+				"'<' has not matching '>' (syntax error on line {line}, column {col})"
 			)).into());
 		}
 		let tag_start = tag_start.unwrap();
@@ -308,7 +308,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		if real_text(text_between).is_some() {
 			let (line, col) = line_and_column(&buffer, tag_span.1);
 			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}: Text outside the root element is not supported"
+				"Text outside the root element is not supported (syntax error on line {line}, column {col})"
 			)).into());
 		}
 		let slice = &buffer[tag_start..tag_end];
@@ -316,7 +316,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			if tag_span.0 != 0 {
 				let (line, col) = line_and_column(&buffer, tag_start);
 				return Err(errors::ParsingError::new(format!(
-					"invalid XML syntax on line {line}, column {col}: <?xml ...?> declaration must at start of XML"
+					"<?xml ...?> declaration must at start of XML (syntax error on line {line}, column {col})"
 				)).into());
 			}
 			decl = Some(dom::Declaration::from_str(slice)?);
@@ -337,7 +337,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			// bad XML
 			let (line, col) = line_and_column(&buffer, tag_start);
 			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}: cannot start with closing tag"
+				"cannot start with closing tag (syntax error on line {line}, column {col})"
 			)).into());
 		} else {
 			// root element?
@@ -355,9 +355,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	// now parse the elements, keeping a stack of parents as the tree is traversed
 	let mut parse_stack = parsing::ParseTree::new();
 	let root_slice = &buffer[tag_span.0 .. tag_span.1];
-	let mut root_element: dom::Element = handle_new_element(root_slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
-	e_stack.borrow_mut().push(&mut root_element);
-	let mut last_span: (usize, usize) = (tag_span.0, tag_span.1);
+	let root_element: dom::Element = parse_new_element(root_slice, &buffer, &tag_span, None)?;
+	parse_stack.push(root_element);
+	let selfclosing_root = root_slice.ends_with("/>");
+	let mut last_span: (usize, usize) = tag_span.clone();
 	loop {
 		// find next tag
 		let next_span = next_tag(&buffer, tag_span.1);
@@ -371,20 +372,50 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				"invalid XML syntax on line {line}, column {col}"
 			)).into());
 		} else {
+			// next tag
+			if selfclosing_root {
+				// next tag not allowed
+				let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+				return Err(errors::ParsingError::new(format!(
+					"only 1 root element is allowed (syntax error on line {line}, column {col})"
+				)).into());
+			}
 			last_span = tag_span;
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
-		handle_text(text, e_stack.borrow_mut().as_mut())?;
+		// if text is not empty, add text node
+		match real_text(text) {
+			None => {},
+			Some(content) => {
+				parse_stack.append(dom::Text::new(content))
+					.map_err(|e|{
+						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+						Err(errors::ParsingError::new(format!(
+							"{} (syntax error on line {line}, column {col})", e
+						)).into())
+					})?;
+			}
+		};
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
-			handle_comment(slice, e_stack.borrow_mut().as_mut())?;
+			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
+				.map_err(|e|{
+					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+					Err(errors::ParsingError::new(format!(
+						"{} (syntax error on line {line}, column {col})", e
+					)).into())
+				})?;
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
-			handle_special(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::NotSupportedError::new(format!(
+				"kiss-xml does not support '{}' (error on line {line}, column {col})",
+				abbreviate(slice, 32)
+			)).into());
 		} else {
 			// element
 			// sanity check
@@ -396,14 +427,23 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			})?;
 			// is it a closing tag? If so, pop the parent stack
 			if slice.starts_with("</") {
-				handle_closing_tag(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
-				// check end condition
-				if e_stack.borrow().is_empty(){
-					break;
+				let active_element = parse_stack.top_element()
+					.ok_or_else(||{
+						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+						Err(errors::ParsingError::new(format!(
+							"root element already closed (syntax error on line {line}, column {col})"
+						)).into())
+					})?;
+				let open_tagname = active_element.tag_name();
+				if strip_tag(slice) !=open_tagname {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
+					)).into());
 				}
 			} else {
 				// add new element to the stack
-				let new_element = handle_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
+				let new_element = parse_new_element(slice, e_stack.borrow_mut().as_mut(), &buffer, &tag_span)?;
 				let mut tmp = &mut e_stack.borrow_mut();
 				let parent = tmp.last_mut().unwrap();
 				e_stack.borrow_mut().push(parent.append_element_and_ref(new_element));
@@ -420,32 +460,16 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	))
 }
 
-// NOTE: the handle_*() functions were created to work around Rust's limited
-// syntax rules for reborrowing (lifetime rules can only be explicitly defined
-// at the function level, not within an arbitrary code block
-/// handles text since last node in parsing
-fn handle_text(text: &str, e_stack: &mut Vec<&mut dom::Element>) -> Result<(), KissXmlError> {
-	// if text is not empty, add text node
-	match real_text(text) {
-		None => {},
-		Some(content) => {
-			e_stack.last_mut().unwrap().append(dom::Text::new(content))
-		}
-	};
-	Ok(())
-}
-/// handles comment
-fn handle_comment(slice: &str, e_stack: &mut Vec<&mut dom::Element>) -> Result<(), KissXmlError> {
-	let c = dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]);
-	e_stack.last_mut().unwrap().append(c);
-	Ok(())
-}
-/// handles <!stuff>
-fn handle_special(slice: &str, _e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<(), KissXmlError> {
-	let (line, col) = line_and_column(&buffer, tag_span.0);
-	return Err(errors::NotSupportedError::new(format!(
-		"error on line {line}, column {col}: kiss-xml does not support '{slice}'"
-	)).into());
+/// abbreviates long strings with ...
+fn abbreviate(text: &str, limit: usize) -> String {
+	if limit < 4 || text.len() <= limit {
+		text.to_string()
+	} else {
+		let mut buffer = (&text[0..(limit / 2 - 1)]).to_string();
+		buffer.push_str("…");
+		buffer.push_str(&text[(text.len() - limit / 2)..]);
+		buffer
+	}
 }
 /// handles closing tag
 fn handle_closing_tag(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<(), KissXmlError> {
@@ -467,7 +491,7 @@ fn handle_closing_tag(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer:
 	Ok(())
 }
 /// handles new element
-fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer: &String, tag_span: &(usize, usize)) -> Result<dom::Element, KissXmlError> {
+fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
 	let tag_content = strip_tag(slice);
 	let components = quote_aware_split(tag_content.as_str());
 	if components.len() == 0 {
@@ -496,7 +520,7 @@ fn handle_new_element(slice: &str, e_stack: &mut Vec<&mut dom::Element>, buffer:
 	let mut xmlns: Option<String> = None;
 	let mut xmlns_prefix: Option<String> = None;
 	// check parent for inherited namespaces
-	let (inherited_default_namespace, inherited_xmlns_context) = match e_stack.last() {
+	let (inherited_default_namespace, inherited_xmlns_context) = match parent {
 		None => (None, None),
 		Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
 	};
