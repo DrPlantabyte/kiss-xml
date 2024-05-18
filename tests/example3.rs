@@ -1,6 +1,6 @@
 
 #[test]
-fn example3() {
+fn example3() -> Result<(), kiss_xml::errors::KissXmlError>{
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	// make a DOM from scratch
@@ -10,5 +10,6 @@ fn example3() {
 	// print to terminal
 	println!("{}", doc.root_element());
 	// write to file
-	doc.write_to_filepath("politics.xml");
+	doc.write_to_filepath("politics.xml")?;
+	Ok(())
 }

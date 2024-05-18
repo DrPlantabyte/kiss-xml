@@ -159,12 +159,11 @@ as-is or with modification, without any limitations.
 
  */
 
-use std::cell::{OnceCell, RefCell};
+use std::cell::{OnceCell};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
-use std::str::FromStr;
 use regex::Regex;
 use crate::errors::KissXmlError;
 
@@ -341,7 +340,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		} else {
 			// root element?
-			check_element_tag(slice).map_err(|e| {
+			check_element_tag(slice).map_err(|_e| {
 				let (line, col) = line_and_column(&buffer, tag_start);
 				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
@@ -358,7 +357,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	let root_element: dom::Element = parse_new_element(root_slice, &buffer, &tag_span, None)?;
 	parse_stack.push(root_element);
 	let selfclosing_root = root_slice.ends_with("/>");
-	let mut last_span: (usize, usize) = tag_span.clone();
+	let mut last_span: (usize, usize);
 	loop {
 		// find next tag
 		let next_span = next_tag(&buffer, tag_span.1);
@@ -419,7 +418,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else {
 			// element
 			// sanity check
-			check_element_tag(slice).map_err(|e| {
+			check_element_tag(slice).map_err(|_e| {
 				let (line, col) = line_and_column(&buffer, tag_span.0);
 				errors::ParsingError::new(format!(
 					"invalid XML syntax on line {line}, column {col}"
@@ -441,6 +440,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
 					)).into());
 				}
+				parse_stack.pop()?;
 			} else {
 				// add new element to the stack
 				let new_element = parse_new_element(slice, &buffer, &tag_span, parse_stack.top_element())?;
@@ -561,8 +561,8 @@ fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
 
 /// finds next <> enclosed thing (or None if EoF is reached)
 fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
-	let mut i = from;
-	let mut start: Option<usize> = (&buffer[from..]).find("<")
+	let _i = from;
+	let start: Option<usize> = (&buffer[from..]).find("<")
 		.map(|i|i+from);
 	if start.is_none() {
 		return (None, None);
@@ -594,7 +594,7 @@ fn quote_aware_split(text: &str) -> Vec<String> {
 	let mut vec: Vec<String> = Vec::new();
 	let mut in_quote = false;
 	let mut quote_char = '\0';
-	for (i, c) in text.char_indices() {
+	for (_i, c) in text.char_indices() {
 		if !in_quote && (c == '\'' || c == '"') {
 			// start of quoted text
 			in_quote = true;

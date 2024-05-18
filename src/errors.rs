@@ -64,10 +64,6 @@ impl ParsingError{
 		m = m.trim_start_matches("ParsingError: ").to_string();
 		Self{msg: m}
 	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
-	}
 }
 
 impl From<ParsingError> for KissXmlError {
@@ -93,10 +89,6 @@ impl TypeCastError{
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
 		Self{msg: msg.into()}
-	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
 	}
 }
 
@@ -124,10 +116,6 @@ impl DoesNotExistError{
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
 		Self{msg: msg.into()}
-	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
 	}
 }
 
@@ -163,13 +151,6 @@ impl IndexOutOfBounds{
 	pub fn new(index: isize, bounds: Option<(isize, isize)>) -> Self {
 		Self{index, bounds}
 	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		match self.bounds {
-			Some(b) => write!(f, "Index {} is out of bounds (valid range: {} - {})", &self.index, b.0, b.1),
-			None => write!(f, "Index {} is out of bounds", &self.index)
-		}
-	}
 }
 
 impl From<IndexOutOfBounds> for KissXmlError {
@@ -178,7 +159,10 @@ impl From<IndexOutOfBounds> for KissXmlError {
 
 impl Display for IndexOutOfBounds {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		self.print(f)
+		match self.bounds {
+			Some(b) => write!(f, "Index {} is out of bounds (valid range: {} - {})", &self.index, b.0, b.1),
+			None => write!(f, "Index {} is out of bounds", &self.index)
+		}
 	}
 }
 
@@ -195,10 +179,6 @@ impl InvalidAttributeName{
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
 		Self{msg: msg.into()}
-	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
 	}
 }
 
@@ -226,10 +206,6 @@ impl InvalidElementName{
 	pub fn new(msg: impl Into<String>) -> Self {
 		Self{msg: msg.into()}
 	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
-	}
 }
 
 impl From<InvalidElementName> for KissXmlError {
@@ -256,10 +232,6 @@ impl NotSupportedError{
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
 		Self{msg: msg.into()}
-	}
-	/// Formats and prints the error message
-	fn print(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", &self.msg)
 	}
 }
 

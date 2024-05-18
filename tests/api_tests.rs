@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+//! API tests
 
 #[test]
 fn test_xml_escapes() {
@@ -161,7 +161,7 @@ fn test_modify_dom() {
 	use kiss_xml::dom::*;
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
-	doc.root_element_mut().set_attr("author", "some dude");
+	doc.root_element_mut().set_attr("author", "some dude").unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.first_element_by_name_mut("properties").unwrap()
@@ -175,10 +175,10 @@ fn test_modify_dom() {
 		.insert(0, Element::new_with_attributes("property", HashMap::from([
 			("name", "z"),
 			("value", "0"),
-		])).unwrap());
+		])).unwrap()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
-		.insert(1, Comment::new("inserted comment"));
+		.insert(1, Comment::new("inserted comment")).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.append(Text::new("inserted text"));
@@ -213,7 +213,7 @@ fn test_remove_1(){
 	doc.root_element_mut().remove_attr("author");
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
-		.remove(0);
+		.remove(0).unwrap();
 	doc.root_element_mut()
 		.remove_all(
 			|n| n.is_text() && n.text().unwrap().contains("My metadata")
@@ -222,7 +222,7 @@ fn test_remove_1(){
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.first_element_by_name_mut("properties").unwrap()
-		.remove_element(1);
+		.remove_element(1).unwrap();
 	
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -241,7 +241,6 @@ fn test_remove_1(){
 #[test]
 fn test_remove_2(){
 	use kiss_xml;
-	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
@@ -351,7 +350,6 @@ fn test_debug_display(){
 
 #[test]
 fn test_namespaces_1() {
-	use std::str::FromStr;
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_3()).unwrap();
@@ -362,16 +360,15 @@ fn test_namespaces_1() {
 	assert_eq!(doc.root_element().first_element_by_name("height").unwrap().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace(Some("internal://ns/a")).count(), 2, "XML namespace not correctly inherited");
 	// check that adding a new element inherits the namespace of the parent unless otherwise specified
-	doc.root_element_mut().append(Element::new::<&str,&str>("depth", Some("50"), None, None, None, None).unwrap());
+	doc.root_element_mut().append(Element::new::<&str,&str>("depth", Some("50".to_string()), None, None, None, None).unwrap());
 	assert_eq!(doc.root_element().first_element_by_name("depth").unwrap().namespace().unwrap(), "internal://ns/a", "XML namespace not correctly inherited");
 	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
 }
 
 #[test]
 fn test_namespaces_2() {
-	use std::str::FromStr;
 	use kiss_xml;
-	let mut doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
+	let doc = kiss_xml::parse_str(sample_xml_4()).unwrap();
 	assert!(doc.root_element().namespace().is_none(), "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace(None).count(), 3, "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed");
@@ -385,7 +382,7 @@ fn test_namespaces_2() {
 #[test]
 fn test_namespaces_3() {
 	use kiss_xml;
-	let mut doc = kiss_xml::parse_str(sample_xml_5()).unwrap();
+	let doc = kiss_xml::parse_str(sample_xml_5()).unwrap();
 	assert_eq!(doc.root_element().namespace_prefix().unwrap().as_str(), "img", "XML namespace not correctly parsed");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(Some("img")).count(), 2, "XML namespace not correctly parsed or inherited");
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(None).count(), 2, "XML namespace not correctly parsed or inherited");

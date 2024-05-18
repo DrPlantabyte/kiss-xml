@@ -107,16 +107,19 @@ impl ParseTree {
 				.value.as_element_mut().expect("logic error: parent is not an Element")
 				.append_boxed(node.value);
 		}
-		let mut root_node = self.data.remove(&0).expect("logic error: no root element");
+		let root_node = self.data.remove(&0).expect("logic error: no root element");
 		let mut root = root_node.destruct();
 		// let mut e = **(root.as_any()
 		// 	.downcast_ref::<Box<Element>>()
 		// 	.expect("logic error: root is not an element"));
-		let mut e: Box<Element> = Box::downcast(root).expect("logic error: root is not an element");
+		let e = root.as_element_mut().expect("logic error: root is not an element");
 		// flip children because they were added in reverse order
 		e.reverse_children();
 		// done
-		return Ok(*e);
+		// TODO: figure out a better way to do a downcast deref-move without cloning
+		// (until then, I hope the LLVM compiler is smart enough to figure out that I want a
+		// deref-move, not a copy-and-delete, and optimize it to do teh right thing)
+		return Ok(e.clone());
 	}
 }
 

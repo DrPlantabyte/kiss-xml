@@ -1,6 +1,5 @@
 use kiss_xml;
 use kiss_xml::dom::*;
-use kiss_xml::errors::*;
 use std::collections::HashMap;
 use std::error::Error;
 

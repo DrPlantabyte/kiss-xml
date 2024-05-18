@@ -39,10 +39,9 @@ use std::cell::OnceCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
-use std::fs;
+
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use std::str::FromStr;
 use regex::Regex;
 use crate::errors::*;
 
@@ -694,7 +693,7 @@ impl Element {
 		self.child_elements_mut().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
-	fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
+	pub fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
 		Self::xmlns_context_from_attributes(&self.attributes, None)
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
@@ -1067,12 +1066,6 @@ impl Element {
 		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
-	}
-
-	/** This functions appends an Element child node and returns a mutable reference to the added Element (used by the parser to account for lifetimes) */
-	pub(crate) fn append_element_and_ref(&mut self, e: Element) -> &mut Element {
-		self.append(e);
-		self.child_nodes.last_mut().unwrap().as_element_mut().unwrap()
 	}
 	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {
