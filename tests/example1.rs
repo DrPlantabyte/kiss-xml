@@ -1,4 +1,3 @@
-use kiss_xml::dom::Node;
 
 #[test]
 fn example1() {

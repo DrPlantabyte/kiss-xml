@@ -14,9 +14,13 @@ categories = ["config", "parsing", "text-processing"] # see https://crates.io/ca
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lints.rust]
+missing_docs = "deny"
+unused_must_use = "deny"
+
 [dependencies]
 dyn-clone = "1"
-http = "1.0"
+regex = "1"
 
 [dev-dependencies]
 tempfile = "3" # used for testing file I/O in API and unit tests

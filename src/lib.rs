@@ -1,6 +1,3 @@
-#![deny(unused_must_use)]
-#![deny(missing_docs)]
-
 /*!
 # KISS-XML: Keep It Super Simple XML
 
@@ -95,11 +92,11 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
 	// make a DOM from scratch
-	let mut doc = Document::new(Element::new("politicians"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton"));
-	doc.root_element_mut().insert(0, Element::new_with_text("person", "John Adams"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name"));
+	let mut doc = Document::new(Element::new_from_name("politicians")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
+	doc.root_element_mut().insert(0, Element::new_with_text("person", "John Adams")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name")?);
 	// remove element by index
 	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
@@ -118,6 +115,8 @@ The XML DOM is made up of Node objects (trait objects implementing trait kiss_xm
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
+	use kiss_xml::dom::*;
+	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
 	<!-- this is a comment ->
@@ -160,54 +159,553 @@ as-is or with modification, without any limitations.
 
  */
 
+use std::cell::{OnceCell};
+use std::collections::HashMap;
+use std::fs;
 use std::io::Read;
 use std::path::Path;
+use regex::Regex;
+use crate::errors::KissXmlError;
 
 pub mod errors;
 pub mod dom;
+mod parsing;
 
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
 /// into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn text_escape(text: impl Into<String>) -> String {
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&", "&amp;")
+		.replace("<", "&lt;")
+		.replace(">", "&gt;")
 }
 
 /// Escapes a subset of XML reserved characters (&, ', and ") in an attribute
 /// into XML-compatible text, eg replacing "&" with "&amp;" and "'" with "&apos;"
 pub fn attribute_escape(text: impl Into<String>) -> String {
-	todo!()
+	escape(text)
 }
 
 /// Escapes all special characters (&, <, >, ', and ") in a string into an
 /// XML-compatible string, eg replacing "&" with "&amp;" and "<" with "&lt;"
 pub fn escape(text: impl Into<String>) -> String {
-	todo!()
+	let buffer: String = text.into();
+	buffer.replace("&", "&amp;")
+		.replace("<", "&lt;")
+		.replace(">", "&gt;")
+		.replace("'", "&apos;")
+		.replace("\"", "&quot;")
 }
 
 /// Reverses any escaped characters (&, <, >, ', and ") in XML-compatible text
 /// to regenerate the original text, eg replacing "&amp;" with "&" and "&lt;"
 /// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
-	todo!()
+	let mut buffer: String = text.into();
+	let mut last_i: usize = 0;
+	loop {
+		if last_i >= buffer.len(){break;}
+		match (&buffer[last_i..]).find("&") {
+			None => break,
+			Some(i) => {
+				let i = i+last_i;
+				let start = i;
+				let slice = (&buffer[i..]).to_string();
+				for (j, k) in slice.char_indices() {
+					if k == ';' {
+						let end = i + j + 1;
+						let slice = &slice[..j];
+						// note: trailing ; omitted from this slice
+						if slice == "&amp" {
+							string_insert(&mut buffer, (start, end), "&");
+						}
+						if slice == "&lt" {
+							string_insert(&mut buffer, (start, end), "<");
+						}
+						if slice == "&gt" {
+							string_insert(&mut buffer, (start, end), ">");
+						}
+						if slice == "&apos" {
+							string_insert(&mut buffer, (start, end), "'");
+						}
+						if slice == "&quot" {
+							string_insert(&mut buffer, (start, end), "\"");
+						}
+						if slice.starts_with("&#") {
+							match u32::from_str_radix(&slice[2..], 16) {
+								Ok(codepoint) => {
+									match char::from_u32(codepoint) {
+										Some(unicode) => {
+											string_insert(&mut buffer, (start, end), unicode.to_string().as_str());
+										},
+										None => { /* do nothing */ }
+									}
+								}
+								Err(_) => { /* do nothing */ }
+							}
+						}
+					}
+				}
+				last_i = i+1;
+			}
+		}
+	}
+	buffer
+}
+
+/// replaces indices (a, b) in given string with a new string (in-place)
+fn string_insert(buffer: &mut String, indices: (usize, usize), insert: &str) {
+	let back = (&buffer[indices.1..]).to_string();
+	buffer.truncate(indices.0);
+	buffer.push_str(insert);
+	buffer.push_str(back.as_str());
 }
 
 /** Reads the file from the given filepath and parses it as an XML document
 */
 pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::KissXmlError> {
-	todo!()
+	let path_ref = path.as_ref();
+	let content = fs::read_to_string(path_ref)?;
+	parse_str(content)
 }
 
 /** Reads the XML content from the given stream reader and parses it as an
-XML document
+XML document. Note that this function will read to EOF before returning.
  */
-pub fn parse_stream(reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
-	todo!()
+pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
+	let mut buffer = String::new();
+	reader.read_to_string(&mut buffer)?;
+	parse_str(buffer)
 }
 
 
-/** Reads the XML content from the text string and parses it as an XML document
+/** Reads the XML content from the UTF-8 encoded text string and parses it as an XML document
  */
 pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors::KissXmlError> {
-	todo!()
+	let buffer = xml_string.into();
+	let mut decl: Option<dom::Declaration> = None;
+	let mut dtds: Vec<dom::DTD> = Vec::new();
+	let mut no_comment_warn = 0;
+	let mut tag_span: (usize, usize) = (0, 0);
+	// parse decl and dtds, break on start of root element
+	loop {
+		let (tag_start, tag_end) = next_tag(&buffer, tag_span.1);
+		if tag_start.is_none() {
+			// not XML
+			return Err(errors::ParsingError::new(format!("no XML content")).into());
+		}
+		if tag_end.is_none(){
+			let (line, col) = line_and_column(&buffer, tag_start.unwrap());
+			return Err(errors::ParsingError::new(format!(
+				"'<' has not matching '>' (syntax error on line {line}, column {col})"
+			)).into());
+		}
+		let tag_start = tag_start.unwrap();
+		let tag_end = tag_end.unwrap();
+		let text_between = &buffer[tag_span.1..tag_start];
+		if real_text(text_between).is_some() {
+			let (line, col) = line_and_column(&buffer, tag_span.1);
+			return Err(errors::ParsingError::new(format!(
+				"Text outside the root element is not supported (syntax error on line {line}, column {col})"
+			)).into());
+		}
+		let slice = &buffer[tag_start..tag_end];
+		if slice.starts_with("<?xml") {
+			if tag_span.0 != 0 {
+				let (line, col) = line_and_column(&buffer, tag_start);
+				return Err(errors::ParsingError::new(format!(
+					"<?xml ...?> declaration must at start of XML (syntax error on line {line}, column {col})"
+				)).into());
+			}
+			decl = Some(dom::Declaration::from_str(slice)?);
+		} else if slice.starts_with("<!--") {
+			// comments outside root element not supported
+			if no_comment_warn == 0 {
+				eprintln!("WARNING: Encountered comment {slice} outside of root element. Comments outside of the root are not supported and will be ignored.");
+			}
+			no_comment_warn += 1;
+		} else if slice.starts_with("<!DOCTYPE") {
+			// DTD
+			let dtd = dom::DTD::from_string(slice)?;
+			dtds.push(dtd);
+		} else if slice.starts_with("<!"){
+			// some other XML mallarky
+			eprintln!("WARNING: Ignoring {slice} (not supported outside root element)");
+		} else if slice.starts_with("</") {
+			// bad XML
+			let (line, col) = line_and_column(&buffer, tag_start);
+			return Err(errors::ParsingError::new(format!(
+				"cannot start with closing tag (syntax error on line {line}, column {col})"
+			)).into());
+		} else {
+			// root element?
+			check_element_tag(slice).map_err(|_e| {
+				let (line, col) = line_and_column(&buffer, tag_start);
+				errors::ParsingError::new(format!(
+					"invalid XML syntax on line {line}, column {col}"
+				))
+			})?;
+			tag_span = (tag_start, tag_end);
+			break;
+		}
+		tag_span = (tag_start, tag_end);
+	}
+	// now parse the elements, keeping a stack of parents as the tree is traversed
+	let mut parse_stack = parsing::ParseTree::new();
+	let root_slice = &buffer[tag_span.0 .. tag_span.1];
+	let root_element: dom::Element = parse_new_element(root_slice, &buffer, &tag_span, None)?;
+	parse_stack.push(root_element);
+	let selfclosing_root = root_slice.ends_with("/>");
+	let mut last_span: (usize, usize);
+	loop {
+		// find next tag
+		let next_span = next_tag(&buffer, tag_span.1);
+		if next_span.0.is_none() {
+			// EoF
+			break
+		} else if next_span.1.is_none() {
+			// broken tag?
+			let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}"
+			)).into());
+		} else {
+			// next tag
+			if selfclosing_root {
+				// next tag not allowed
+				let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+				return Err(errors::ParsingError::new(format!(
+					"only 1 root element is allowed (syntax error on line {line}, column {col})"
+				)).into());
+			}
+			last_span = tag_span;
+			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
+		}
+		// get text since last tag
+		let text = &buffer[last_span.1 .. tag_span.0];
+		// if text is not empty, add text node
+		match real_text(text) {
+			None => {},
+			Some(content) => {
+				parse_stack.append(dom::Text::new(content))
+					.map_err(|e|{
+						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+						errors::ParsingError::new(format!(
+							"{} (syntax error on line {line}, column {col})", e
+						))
+					})?;
+			}
+		};
+		// parse span
+		let slice = &buffer[tag_span.0 .. tag_span.1];
+		if slice.starts_with("<!--") && slice.ends_with("-->") {
+			// comment
+			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
+				.map_err(|e|{
+					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+					errors::ParsingError::new(format!(
+						"{} (syntax error on line {line}, column {col})", e
+					))
+				})?;
+		} else if slice.starts_with("<!") {
+			// CDATA or other unsupported thing
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::NotSupportedError::new(format!(
+				"kiss-xml does not support '{}' (error on line {line}, column {col})",
+				abbreviate(slice, 32)
+			)).into());
+		} else {
+			// element
+			// sanity check
+			check_element_tag(slice).map_err(|_e| {
+				let (line, col) = line_and_column(&buffer, tag_span.0);
+				errors::ParsingError::new(format!(
+					"invalid XML syntax on line {line}, column {col}"
+				))
+			})?;
+			// is it a closing tag? If so, pop the parent stack
+			if slice.starts_with("</") {
+				let active_element = parse_stack.top_element()
+					.ok_or_else(||{
+						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+						errors::ParsingError::new(format!(
+							"root element already closed (syntax error on line {line}, column {col})"
+						))
+					})?;
+				let open_tagname = active_element.tag_name();
+				if strip_tag(slice) != open_tagname {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
+					)).into());
+				}
+				parse_stack.pop()?;
+			} else {
+				// add new element to the stack
+				let new_element = parse_new_element(slice, &buffer, &tag_span, parse_stack.top_element())?;
+				parse_stack.push(new_element);
+			}
+		}
+		// repeat
+	}
+	// return a DOM document
+	Ok(dom::Document::new_with_decl_dtd(
+		parse_stack.to_dom()?,
+		decl,
+		Some(&dtds)
+	))
+}
+
+/// abbreviates long strings with ...
+fn abbreviate(text: &str, limit: usize) -> String {
+	if limit < 4 || text.len() <= limit {
+		text.to_string()
+	} else {
+		let mut buffer = (&text[0..(limit / 2 - 1)]).to_string();
+		buffer.push_str("…");
+		buffer.push_str(&text[(text.len() - limit / 2)..]);
+		buffer
+	}
+}
+
+/// handles new element
+fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
+	let tag_content = strip_tag(slice);
+	let components = quote_aware_split(tag_content.as_str());
+	if components.len() == 0 {
+		let (line, col) = line_and_column(&buffer, tag_span.0);
+		return Err(errors::ParsingError::new(format!(
+			"invalid XML syntax on line {line}, column {col}: empty tags not supported"
+		)).into());
+	}
+	// parse attributes
+	let mut attrs: HashMap<String, String> = HashMap::new();
+	for i in 1..components.len() {
+		let kv = &components[i];
+		if !kv.contains("=") {
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}: attributes must be in the form 'key=\"value\"'"
+			)).into());
+		}
+		let (k, mut v) = kv.split_once("=").unwrap();
+		// note: v string contains enclosing quotes
+		v = &v[1..(v.len()-1)]; // remove quotes
+		attrs.insert(k.to_string(), v.to_string());
+	}
+	// parse name and namespace
+	let mut name = components[0].as_str();
+	let mut xmlns: Option<String> = None;
+	let mut xmlns_prefix: Option<String> = None;
+	// check parent for inherited namespaces
+	let (inherited_default_namespace, inherited_xmlns_context) = match parent {
+		None => (None, None),
+		Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
+	};
+	if name.contains(":"){
+		let (a, b) = name.split_once(":").unwrap();
+		name = b;
+		xmlns_prefix = Some(a.to_string());
+		// check if the prefix is in attributes or inherited from parent
+		let prefix_key = format!("xmlns:{a}");
+		xmlns = match attrs.contains_key(&prefix_key){
+			true => attrs.get(prefix_key.as_str()).map(String::clone),
+			false => match &inherited_xmlns_context{
+				None => {
+					let (line, col) = line_and_column(&buffer, tag_span.0);
+					return Err(errors::ParsingError::new(format!(
+						"invalid XML syntax on line {line}, column {col}: XML namespace prefix '{a}' has no defined namespace (missing 'xmlns:{a}=\"...\"')"
+					)).into());
+				}
+				Some(ctx) => {ctx.get(prefix_key.as_str()).map(String::clone)}
+			}
+		};
+	}
+	let mut new_element = dom::Element::new(
+		name, None, Some(attrs), xmlns, xmlns_prefix, None
+	)?;
+	new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
+	Ok(new_element)
+}
+
+/// removes leading and trailing <> and/or /
+fn strip_tag(tag: &str) -> String {
+	let mut tag = tag;
+	if tag.starts_with("<") {tag = &tag[1..];}
+	if tag.starts_with("/") {tag = &tag[1..];}
+	if tag.ends_with(">") {tag = &tag[..tag.len().saturating_sub(1)];}
+	if tag.ends_with("/") {tag = &tag[..tag.len().saturating_sub(1)];}
+	tag.trim().to_string()
+}
+
+
+/// singleton regex matcher
+const ELEM_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// checks if a tag has valid syntax for an element (does not parse)
+fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
+	let singleton = ELEM_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(||{
+		// see https://www.w3.org/TR/REC-xml/#sec-common-syn
+		let name_start_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}]"#;
+		let name_char = r#"[A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
+		let pattern = format!(r#"(?ms)<{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
+		Regex::new(pattern.as_str()).unwrap()
+	});
+	match matcher.is_match(text){
+		true => Ok(()),
+		false => Err(errors::ParsingError::new("Invalid XML Element").into())
+	}
+}
+
+
+/// finds next <> enclosed thing (or None if EoF is reached)
+fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
+	let _i = from;
+	let start: Option<usize> = (&buffer[from..]).find("<")
+		.map(|i|i+from);
+	if start.is_none() {
+		return (None, None);
+	}
+	let start_index = start.expect("logic error");
+	// the rules differ depending on the kind of tag
+	let sub_buffer = &buffer[start_index..];
+	if sub_buffer.starts_with("<!--") {
+		// comment
+		return (start, sub_buffer.find("-->").map(|i|i+start_index));
+	} else if sub_buffer.starts_with("<?") {
+		// declaration, look for ?> but handle quoting
+		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index+2))
+	} else if sub_buffer.starts_with("<![CDATA[") {
+		// CDATA
+		return (start, sub_buffer.find("]]>").map(|i|i+start_index+3));
+	} else if sub_buffer.starts_with("<!") {
+		// DTD or other XML weirdness, do nested search for closing >
+		return (start, nested_quote_aware_find_close(sub_buffer,2).map(|i|i+start_index+1))
+	} else {
+		// normal element tag (we assume)
+		return (start, quote_aware_find(sub_buffer, ">", 1).map(|i|i+start_index+1))
+	}
+}
+
+/// splits by whitespace, respecting quotes
+fn quote_aware_split(text: &str) -> Vec<String> {
+	let mut builder = String::new();
+	let mut vec: Vec<String> = Vec::new();
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (_i, c) in text.char_indices() {
+		if !in_quote && (c == '\'' || c == '"') {
+			// start of quoted text
+			in_quote = true;
+			quote_char = c;
+			builder.push(c);
+		} else if in_quote {
+			// quoted text
+			builder.push(c);
+			if c == quote_char {
+				// end of quoted text
+				in_quote = false;
+			}
+		} else if c.is_whitespace() {
+			// break on whitespace
+			if builder.len() > 0 {
+				vec.push(builder);
+				builder = String::new();
+			}
+		} else {
+			// normal text
+			builder.push(c);
+		}
+	}
+	return vec;
+}
+/// like `String.find()` but skipping quoted content
+fn quote_aware_find(text: &str, pattern: &str, from: usize) -> Option<usize> {
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (i, c) in text[from..].char_indices() {
+		if in_quote {
+			if c == quote_char { // end of quoted field
+				in_quote = false;
+			}
+		} else {
+			if c == '"' { // start of double-quoted field
+				quote_char = '"';
+				in_quote = true;
+			} else if c == '\'' { // start of single-quoted field
+				quote_char = '\'';
+				in_quote = true;
+			} else if text[(from + i)..].starts_with(pattern) {
+				return Some(from+i);
+			}
+		}
+	}
+	None
+}
+
+/// like `quote_aware_find()` above, but the pattern is '>' and it skips both quoted content and nested <tags>
+fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
+	let mut depth: i32 = 0;
+	let mut in_quote = false;
+	let mut quote_char = '\0';
+	for (i, c) in text[from..].char_indices() {
+		if in_quote {
+			if c == quote_char { // end of quoted field
+				in_quote = false;
+			}
+		} else {
+			if c == '"' { // start of double-quoted field
+				quote_char = '"';
+				in_quote = true;
+			} else if c == '\'' { // start of single-quoted field
+				quote_char = '\'';
+				in_quote = true;
+			} else if c == '<' {
+				depth += 1;
+			} else if c == '>' {
+				if depth == 0 {
+					return Some(from+i)
+				}
+				depth -= 1;
+			}
+		}
+	}
+	None
+}
+
+
+/// singleton regex matcher
+const IS_BLANK_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// singleton regex matcher
+const INDENTED_LINE_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// extracts the actual text (accounting for indenting) from a string slice,
+/// returning None if it is all whitespace
+fn real_text(text: &str) -> Option<String> {
+	// check for empty string
+	let singleton = IS_BLANK_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap());
+	if matcher.is_match(text) {
+		return None;
+	}
+	// extract actual text
+	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
+	let text = matcher.replace(text, "\n");
+	Some(unescape(text.trim_start()))
+}
+
+/// get line and column number for index to use for error reporting
+fn line_and_column(text: &String, pos: usize) -> (usize, usize){
+	let mut line = 1;
+	let mut col = 1;
+	for (i, c) in text.char_indices(){
+		col += 1;
+		if c == '\n' {
+			line += 1;
+			col = 1;
+		}
+		if i >= pos {break;}
+	}
+	(line, col)
 }
