@@ -394,7 +394,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
 						errors::ParsingError::new(format!(
 							"{} (syntax error on line {line}, column {col})", e
-						)).into()
+						))
 					})?;
 			}
 		};
@@ -405,9 +405,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
 				.map_err(|e|{
 					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-					Err(errors::ParsingError::new(format!(
+					errors::ParsingError::new(format!(
 						"{} (syntax error on line {line}, column {col})", e
-					)).into())
+					))
 				})?;
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
@@ -430,9 +430,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				let active_element = parse_stack.top_element()
 					.ok_or_else(||{
 						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-						Err(errors::ParsingError::new(format!(
+						errors::ParsingError::new(format!(
 							"root element already closed (syntax error on line {line}, column {col})"
-						)).into())
+						))
 					})?;
 				let open_tagname = active_element.tag_name();
 				if strip_tag(slice) != open_tagname {

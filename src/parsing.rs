@@ -112,11 +112,11 @@ impl ParseTree {
 		// let mut e = **(root.as_any()
 		// 	.downcast_ref::<Box<Element>>()
 		// 	.expect("logic error: root is not an element"));
-		let e = root.as_element_mut().expect("logic error: root is not an element");
+		let mut e: Box<Element> = Box::downcast(root).expect("logic error: root is not an element");
 		// flip children because they were added in reverse order
 		e.reverse_children();
 		// done
-		return Ok(e);
+		return Ok(*e);
 	}
 }
 
