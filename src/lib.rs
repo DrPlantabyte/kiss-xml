@@ -288,9 +288,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	let mut dtds: Vec<dom::DTD> = Vec::new();
 	let mut no_comment_warn = 0;
 	let mut tag_span: (usize, usize) = (0, 0);
+	println!("reading buffer:\n==========\n{buffer}\n==========\n");
 	// parse decl and dtds, break on start of root element
 	loop {
+		println!("\tloop 1");
 		let (tag_start, tag_end) = next_tag(&buffer, tag_span.1);
+		println!("next tag pos ({:?}, {:?})", tag_start, tag_end);
 		if tag_start.is_none() {
 			// not XML
 			return Err(errors::ParsingError::new(format!("no XML content")).into());
@@ -304,6 +307,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		let tag_start = tag_start.unwrap();
 		let tag_end = tag_end.unwrap();
 		let text_between = &buffer[tag_span.1..tag_start];
+		println!("text_between: '{}'", text_between);
 		if real_text(text_between).is_some() {
 			let (line, col) = line_and_column(&buffer, tag_span.1);
 			return Err(errors::ParsingError::new(format!(
@@ -311,6 +315,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		}
 		let slice = &buffer[tag_start..tag_end];
+		println!("slice: {}", slice);
 		if slice.starts_with("<?xml") {
 			if tag_span.0 != 0 {
 				let (line, col) = line_and_column(&buffer, tag_start);
@@ -358,9 +363,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	parse_stack.push(root_element);
 	let selfclosing_root = root_slice.ends_with("/>");
 	let mut last_span: (usize, usize);
+	println!("\n===== Parsing XML content\n=====");
 	loop {
+		println!("\tloop 2");
 		// find next tag
 		let next_span = next_tag(&buffer, tag_span.1);
+		println!("next_span: {:?}", next_span);
 		if next_span.0.is_none() {
 			// EoF
 			break
@@ -382,12 +390,16 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			last_span = tag_span;
 			tag_span = (next_span.0.unwrap(), next_span.1.unwrap());
 		}
+		println!("last_span: {:?}", last_span);
+		println!("tag_span: {:?}", tag_span);
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
+		println!("text: '{}'", text);
 		// if text is not empty, add text node
 		match real_text(text) {
 			None => {},
 			Some(content) => {
+				println!("real_text: {}", content);
 				parse_stack.append(dom::Text::new(content))
 					.map_err(|e|{
 						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
@@ -399,6 +411,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		};
 		// parse span
 		let slice = &buffer[tag_span.0 .. tag_span.1];
+		println!("slice: {}", slice);
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
 			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
@@ -449,6 +462,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		}
 		// repeat
 	}
+	println!("done parsing");
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
 		parse_stack.to_dom()?,
@@ -472,7 +486,9 @@ fn abbreviate(text: &str, limit: usize) -> String {
 /// handles new element
 fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
 	let tag_content = strip_tag(slice);
+	println!("tag_content: {tag_content}");
 	let components = quote_aware_split(tag_content.as_str());
+	println!("components: {:?}", components);
 	if components.len() == 0 {
 		let (line, col) = line_and_column(&buffer, tag_span.0);
 		return Err(errors::ParsingError::new(format!(
@@ -617,6 +633,9 @@ fn quote_aware_split(text: &str) -> Vec<String> {
 			// normal text
 			builder.push(c);
 		}
+	}
+	if !builder.is_empty() {
+		vec.push(builder);
 	}
 	return vec;
 }
