@@ -120,10 +120,8 @@ impl ParseTree {
 		// flip children because they were added in reverse order
 		e.reverse_children();
 		// done
-		// TODO: figure out a better way to do a downcast deref-move without cloning
-		// (until then, I hope the LLVM compiler is smart enough to figure out that I want a
-		// deref-move, not a copy-and-delete, and optimize it to do teh right thing)
-		return Ok(e.clone());
+		// use mem::take to do a "DerefMove" operation
+		return Ok(std::mem::take(e));
 	}
 }
 

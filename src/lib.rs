@@ -359,11 +359,11 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	// now parse the elements, keeping a stack of parents as the tree is traversed
 	let mut parse_stack = parsing::ParseTree::new();
 	let root_slice = &buffer[tag_span.0 .. tag_span.1];
-	let root_element: dom::Element = parse_new_element(root_slice, &buffer, &tag_span, None)?;
+	let root_element: dom::Element = parse_new_element(strip_tag(root_slice).as_str(), &buffer, &tag_span, None)?;
 	parse_stack.push(root_element);
 	let selfclosing_root = root_slice.ends_with("/>");
 	let mut last_span: (usize, usize);
-	println!("\n===== Parsing XML content\n=====");
+	println!("\n===== Parsing XML content =====");
 	loop {
 		println!("\tloop 2");
 		// find next tag
@@ -414,6 +414,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		println!("slice: {}", slice);
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
+			println!("comment: {}", slice);
 			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
 				.map_err(|e|{
 					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
@@ -423,6 +424,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				})?;
 		} else if slice.starts_with("<!") {
 			// CDATA or other unsupported thing
+			println!("special: {}", slice);
 			let (line, col) = line_and_column(&buffer, tag_span.0);
 			return Err(errors::NotSupportedError::new(format!(
 				"kiss-xml does not support '{}' (error on line {line}, column {col})",
@@ -430,11 +432,13 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		} else {
 			// element
+			println!("element: {}", slice);
+			let tag_def = strip_tag(slice);
 			// sanity check
-			check_element_tag(slice).map_err(|_e| {
+			check_element_tag(slice).map_err(|e| {
 				let (line, col) = line_and_column(&buffer, tag_span.0);
 				errors::ParsingError::new(format!(
-					"invalid XML syntax on line {line}, column {col}"
+					"{} (syntax error on line {line}, column {col})", e
 				))
 			})?;
 			// is it a closing tag? If so, pop the parent stack
@@ -447,7 +451,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						))
 					})?;
 				let open_tagname = active_element.tag_name();
-				if strip_tag(slice) != open_tagname {
+				if tag_def != open_tagname {
 					let (line, col) = line_and_column(&buffer, tag_span.0);
 					return Err(errors::ParsingError::new(format!(
 						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
@@ -455,9 +459,19 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				}
 				parse_stack.pop()?;
 			} else {
-				// add new element to the stack
-				let new_element = parse_new_element(slice, &buffer, &tag_span, parse_stack.top_element())?;
-				parse_stack.push(new_element);
+				// add new element to the stack, unless it is self-closing
+				let new_element = parse_new_element(tag_def.as_str(), &buffer, &tag_span, parse_stack.top_element())?;
+				if slice.ends_with("/>") {
+					// self-closing
+					parse_stack.append(new_element).map_err(|e| {
+						let (line, col) = line_and_column(&buffer, tag_span.0);
+						errors::ParsingError::new(format!(
+							"{} (syntax error on line {line}, column {col})", e
+						))
+					})?;
+				} else {
+					parse_stack.push(new_element);
+				}
 			}
 		}
 		// repeat
@@ -484,10 +498,12 @@ fn abbreviate(text: &str, limit: usize) -> String {
 }
 
 /// handles new element
-fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
-	let tag_content = strip_tag(slice);
+/// # Args:
+/// * tag_content - XML tag with the leading and trailing </> and whitespace removed (ie output of
+/// `strip_tag(...)`)
+fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
 	println!("tag_content: {tag_content}");
-	let components = quote_aware_split(tag_content.as_str());
+	let components = quote_aware_split(tag_content);
 	println!("components: {:?}", components);
 	if components.len() == 0 {
 		let (line, col) = line_and_column(&buffer, tag_span.0);
@@ -565,9 +581,10 @@ fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
 		// see https://www.w3.org/TR/REC-xml/#sec-common-syn
 		let name_start_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}]"#;
 		let name_char = r#"[A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
-		let pattern = format!(r#"(?ms)<{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
+		let pattern = format!(r#"(?ms)</?{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
 		Regex::new(pattern.as_str()).unwrap()
 	});
+	println!("\tmatching {:?}", text);
 	match matcher.is_match(text){
 		true => Ok(()),
 		false => Err(errors::ParsingError::new("Invalid XML Element").into())

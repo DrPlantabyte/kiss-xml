@@ -14,6 +14,8 @@ fn example1() {
 "#;
 	// parse XML to a document object model (DOM)
 	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");
+	// print the DOM
+	println!("Parsed:\n{dom}");
 	// print children of the root element
 	for e in dom.root_element().child_elements() {
 		println!("child element <{}>", e.name())
