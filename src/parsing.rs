@@ -98,7 +98,7 @@ impl ParseTree {
 	}
 	/// converts the whole parse tree to a DOM, returning the root element
 	pub fn to_dom(mut self) -> Result<Element, KissXmlError> {
-		if self.pos.is_none() || self.data.is_empty() {
+		if self.data.is_empty() {
 			return Err(ParsingError::new("no root element").into());
 		}
 		// depth-first DOM construction
