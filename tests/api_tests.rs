@@ -6,7 +6,7 @@ fn test_xml_escapes() {
 	let unescaped = r#"&<>'""#;
 	let escaped = "&amp;&lt;&gt;&apos;&quot;";
 	let escaped_text = r#"&amp;&lt;&gt;'""#;
-	let escaped_attribute = "&amp;<>&apos;&quot;";
+	let escaped_attribute = "&amp;&lt;&gt;&apos;&quot;";
 	assert_eq!(kiss_xml::escape(unescaped), escaped, "Incorrect escaping of XML reserved characters");
 	assert_eq!(kiss_xml::unescape(escaped), unescaped, "Incorrect unescaping of XML reserved characters");
 	assert_eq!(kiss_xml::text_escape(unescaped), escaped_text, "Incorrect escaping of XML reserved characters");
@@ -146,7 +146,7 @@ fn test_dom_parsing() {
 	assert!(root.first_element_by_name("signed").unwrap().get_attr("nonexistant").is_none(), "<signed> should not have attribute 'nonexistant'");
 	assert_eq!(root.search(|_| true).count(), 18, "Wrong number of nodes found in recursive search of root element");
 	assert_eq!(root.search(|n| n.is_text()).count(), 8, "Wrong number of text nodes found in recursive search of root element");
-	assert!(root.first_element_by_name("b").is_none(), "<b> is not a child of the root element (is grand-child)");
+	assert!(root.first_element_by_name("b").is_err(), "<b> is not a child of the root element (is grand-child)");
 	assert_eq!(root.search_elements_by_name("b").count(), 1, "Did not find <b> in recursive search");
 	assert_eq!(root.search_elements_by_name("b").collect::<Vec<_>>().first().unwrap().text().unwrap(), "me", "Did not find text for <b> in recursive search");
 	assert_eq!(root.search_elements(|e| e.name() == "b").count(), 1, "Did not find <b> in recursive search");

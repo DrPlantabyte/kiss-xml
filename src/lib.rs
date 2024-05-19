@@ -164,6 +164,7 @@ as-is or with modification, without any limitations.
  */
 
 use std::cell::{OnceCell};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -258,6 +259,23 @@ pub fn unescape(text: impl Into<String>) -> String {
 	buffer
 }
 
+/// comperator for ordering attributes
+pub(crate) fn attribute_order(kv_tup1: &(&String, &String), kv_tup2: &(&String, &String)) -> Ordering {
+	// sort xmlns before rest
+	let a = kv_tup1.0.as_str();
+	let b = kv_tup2.0.as_str();
+	if a == b {
+		return kv_tup1.1.cmp(&kv_tup2.1);
+	}
+	if a.starts_with("xmlns") && !b.starts_with("xmlns") {
+		return Ordering::Less;
+	} else if !a.starts_with("xmlns") && b.starts_with("xmlns") {
+		return Ordering::Greater;
+	} else {
+		return a.cmp(&b);
+	}
+}
+
 /// replaces indices (a, b) in given string with a new string (in-place)
 fn string_insert(buffer: &mut String, indices: (usize, usize), insert: &str) {
 	let back = (&buffer[indices.1..]).to_string();
@@ -331,7 +349,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else if slice.starts_with("<!--") {
 			// comments outside root element not supported
 			if no_comment_warn == 0 {
-				eprintln!("WARNING: Encountered comment {slice} outside of root element. Comments outside of the root are not supported and will be ignored.");
+				eprintln!("WARNING: Encountered comment {} outside of root element. Comments outside of the root are not supported and will be ignored.", abbreviate(slice, 32));
 			}
 			no_comment_warn += 1;
 		} else if slice.starts_with("<!DOCTYPE") {
@@ -616,7 +634,7 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 	let sub_buffer = &buffer[start_index..];
 	if sub_buffer.starts_with("<!--") {
 		// comment
-		return (start, sub_buffer.find("-->").map(|i|i+start_index));
+		return (start, sub_buffer.find("-->").map(|i|i+start_index+3));
 	} else if sub_buffer.starts_with("<?") {
 		// declaration, look for ?> but handle quoting
 		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index+2))

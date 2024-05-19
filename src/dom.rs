@@ -1251,7 +1251,7 @@ impl Element {
 
 		// attributes
 		let mut attrs: Vec<(&String, &String)> = self.attributes().iter().map(|kv| (kv.0, kv.1)).collect();
-		attrs.sort();  // ensure consistent and predictable attribute ordering
+		attrs.sort_by(crate::attribute_order);  // ensure consistent and predictable attribute ordering
 		for (k, v) in attrs {
 			out.push_str(" ");
 			out.push_str(k.as_str());
