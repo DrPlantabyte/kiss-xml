@@ -398,7 +398,7 @@ impl Element {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes("b", HashMap::from(&[
-			("style", "color: blue")
+			("style".to_string(), "color: blue".to_string())
 		]))?;
 		println!("{}", e); // prints `<b style="color: blue"/>`
 		Ok(())
@@ -418,7 +418,7 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes_and_text(
+		let e = Element::new_with_attributes_and_text<&str,&str>(
 			"b",
 			HashMap::from(&[
 				("style", "color: blue")
@@ -440,12 +440,12 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes_and_children(
+		let e = Element::new_with_attributes_and_children<&str,&str>(
 			"contact",
 			HashMap::from(&[
 				("id", "123")
 			]),
-			vec![Element::new_with_text("name", "Billy Bob").boxed()]
+			vec![Element::new_with_text("name", "Billy Bob")?.boxed()]
 		)?;
 		println!("{}", e);
 		/* prints:
@@ -573,7 +573,7 @@ impl Element {
 		<dim:width>200</dim:width>
 	</root>"#)?;
 		for e in doc.root_element().elements_by_namespace(Some(&String::from_str("internal://ns/a")?)){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '200'
@@ -605,11 +605,11 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace_mut(Some("internal://ns/a")){
+		for e in doc.root_element_mut().elements_by_namespace_mut(Some("internal://ns/a")){
 			e.set_text("0");
 		}
 		for e in doc.root_element().elements_by_namespace(Some("internal://ns/a")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '0'
@@ -643,7 +643,7 @@ impl Element {
 		<dim:width>200</dim:width>
 	</root>"#)?;
 		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '200'
@@ -675,11 +675,11 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace_prefix_mut(Some("img")){
+		for e in doc.root_element_mut().elements_by_namespace_prefix_mut(Some("img")){
 			e.set_text("-1")
 		}
 		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '-1'
@@ -759,7 +759,7 @@ impl Element {
 		self.append(Text::new(text));
 	}
 	/**
-	Gets the first child element with the given element name. If no such element exists, `None` is returned.
+	Gets the first child element with the given element name. If no such element exists, an error result is returned.
 
 	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
 	# Example
@@ -773,24 +773,24 @@ impl Element {
 	</body>"#)?;
 		println!("1st <p>: {}",
 			doc.root_element()
-			.first_element_by_name("p").ok_or(Err(DoesNotExistError.default()))?
+			.first_element_by_name("p")?
 		);
 		// prints: "1st <p>: Hello there!"
 		Ok(())
 	}
 	```
 	 */
-	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
+	pub fn first_element_by_name(&self, name: impl Into<String>) -> Result<&Element, DoesNotExistError> {
 		let n: String = name.into();
 		for e in self.child_elements() {
 			if e.name() == n {
-				return Some(e);
+				return Ok(e);
 			}
 		}
-		None
+		Err(DoesNotExistError::default())
 	}
 	/**
-	Gets the first child element with the given element name as a mutable reference. If no such element exists, `None` is returned.
+	Gets the first child element with the given element name as a mutable reference. If no such element exists, an error result is returned.
 
 	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
 	# Example
@@ -802,24 +802,24 @@ impl Element {
 		<p>Hello there!</p>
 	</body>"#)?;
 		doc.root_element_mut()
-			.first_element_by_name_mut("p").ok_or(Err(DoesNotExistError.default()))?
+			.first_element_by_name_mut("p")?
 			.set_text("Good bye!");
 		Ok(())
 	}
 	```
 	 */
-	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
+	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Result<&mut Element, DoesNotExistError> {
 		let n: String = name.into();
 		for e in self.child_elements_mut() {
 			if e.name() == n {
-				return Some(e);
+				return Ok(e);
 			}
 		}
-		None
+		Err(DoesNotExistError::default())
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		let n: String = name.into();
@@ -827,7 +827,7 @@ impl Element {
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		let n: String = name.into();
@@ -910,9 +910,9 @@ impl Element {
 		</root>"#)?;
 		println!("Fantasy books:");
 		for fantasy_book in library.root_element().search(
-			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some(&"fantasy".to_string())
+			|n| n.is_element() && n.as_element().unwrap().get_attr("genre") == Some(&"fantasy".to_string())
 		){
-			println!("{}", fantasy_book.text());
+			println!("{}", fantasy_book.expect("no title").text());
 		}
 		Ok(())
 	}
@@ -956,7 +956,7 @@ impl Element {
 		for fantasy_book in library.root_element().search_elements(
 			|e| e.get_attr("genre") == Some(&String::from("fantasy"))
 		){
-			println!("{}", fantasy_book.text());
+			println!("{}", fantasy_book.expect("no title").text());
 		}
 		Ok(())
 	}
@@ -994,7 +994,7 @@ impl Element {
 		for book in library.root_element().search_elements_by_name(
 			"book"
 		){
-			println!("{}", book.text());
+			println!("{}", book.text().expect("no title"));
 		}
 		Ok(())
 	}
@@ -1049,7 +1049,7 @@ impl Element {
 		// Note: if this is an element, set the namespace context
 		self.append_boxed(node.boxed());
 	}
-	/** same as `.append(...)` but for a Box<dyn Node> */
+	/** same as [append(...)](Element::append()) but for a Box&lt;dyn Node&gt; */
 	pub fn append_boxed(&mut self, node: Box<dyn Node>) {
 		let is_element = node.is_element();
 		self.child_nodes.push(node);
@@ -1108,8 +1108,8 @@ impl Element {
 		use kiss_xml::dom::*;
 		let mut doc = Document::new(Element::new_from_name("album")?);
 		doc.root_element_mut().append_all(vec![
-			Element::new_with_text("song", "I Believe I Can Fly").boxed(),
-			Element::new_with_text("song", "My Heart Will Go On").boxed(),
+			Element::new_with_text("song", "I Believe I Can Fly")?.boxed(),
+			Element::new_with_text("song", "My Heart Will Go On")?.boxed(),
 			Comment::new("album list incomplete").boxed(),
 		]);
 		println!("{}", doc);

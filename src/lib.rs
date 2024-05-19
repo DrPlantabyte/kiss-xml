@@ -49,6 +49,7 @@ For example:
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<name>My Settings</name>
@@ -67,8 +68,8 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	for prop in properties {
 		println!(
 			"{} = {}",
-			prop.get_attr("name")?,
-			prop.get_attr("value")?
+			prop.get_attr("name").ok_or(DoesNotExistError::default())?,
+			prop.get_attr("value").ok_or(DoesNotExistError::default())?
 		);
 	}
 	// print children of the root element
@@ -91,18 +92,19 @@ For example:
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	// make a DOM from scratch
 	let mut doc = Document::new(Element::new_from_name("politicians")?);
-	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
 	doc.root_element_mut().insert(0, Element::new_with_text("person", "John Adams")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
 	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John")?);
 	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name")?);
 	// remove element by index
 	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
-	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text()? == "Jimmy John");
+	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text().or(Some(String::new())).unwrap() == "Jimmy John");
 	// print first element content
-	println!("First politician: {}", doc.root_element().elements_by_name("person").text()?);
+	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text().expect("no text"));
 	// write to file
 	doc.write_to_filepath("politics.xml");
 	Ok(())
@@ -116,6 +118,7 @@ The XML DOM is made up of Node objects (trait objects implementing trait kiss_xm
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
@@ -132,24 +135,25 @@ r#"<html>
 	println!("Comment: {}", first_comment.text()?);
 	doc.root_element_mut().remove_all(|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body").remove_all(|_| true);
-	doc.root_element_mut().first_element_by_name_mut("body").append_all(
-		&[
-			&Element::new_with_text("h1", "Chapter 1"),
-			&Comment::new("Note: there is only one chapter"),
-			&Element::new_with_children("p", &[
-				&Text::new("Once upon a time, there was a little "),
-				&Element::new_with_attributes_and_text(
+	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body")?.append_all(
+		vec![
+			Element::new_with_text("h1", "Chapter 1")?.boxed(),
+			Comment::new("Note: there is only one chapter").boxed(),
+			Element::new_with_children("p", vec![
+				Text::new("Once upon a time, there was a little ").boxed(),
+				Element::new_with_attributes_and_text::<&str,&str>(
 					"a",
 					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
 					"gnome"
-				),
-				&Text::new(" who lived in a walnut tree...")
-			])
+				)?.boxed(),
+				Text::new(" who lived in a walnut tree...").boxed()
+			])?.boxed()
 		]
 	);
 	// print the results
 	println!("{}", doc.to_string());
+	Ok(())
 }
 ```
 
