@@ -22,6 +22,14 @@ impl ParseTree {
 	pub fn new() -> Self {
 		Self::default()
 	}
+	/// returns true if the simulated "stack" is empty, false otherwise. This can still return true
+	/// even if the internal HashMap is not empty
+	pub fn empty_stack(&self) -> bool {
+		match self.pos {
+			None => true,
+			Some(_) => false
+		}
+	}
 	/// push a new element to the stack
 	pub fn push(&mut self, new_element: Element) {
 		println!("pushing: <{}>", new_element.tag_name());

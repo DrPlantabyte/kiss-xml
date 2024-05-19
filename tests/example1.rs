@@ -10,7 +10,7 @@ fn example1() {
 		<property name="volume" value="11" />
 		<property name="mixer" value="standard" />
 	</sound>
-<config>
+</config>
 "#;
 	// parse XML to a document object model (DOM)
 	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");

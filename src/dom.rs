@@ -1700,13 +1700,13 @@ impl Default for Declaration {
 
 impl std::fmt::Display for Declaration {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.decl_str)
+		write!(f, "<?{}?>", self.decl_str)
 	}
 }
 
 impl std::fmt::Debug for Declaration {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.decl_str)
+		write!(f, "<?{}?>", self.decl_str)
 	}
 }
 

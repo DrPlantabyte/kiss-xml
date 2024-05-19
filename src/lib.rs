@@ -362,6 +362,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	let root_element: dom::Element = parse_new_element(strip_tag(root_slice).as_str(), &buffer, &tag_span, None)?;
 	parse_stack.push(root_element);
 	let selfclosing_root = root_slice.ends_with("/>");
+	if selfclosing_root {parse_stack.pop()?;}  // pop root if it is  self-closing
 	let mut last_span: (usize, usize);
 	println!("\n===== Parsing XML content =====");
 	loop {
@@ -477,6 +478,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		// repeat
 	}
 	println!("done parsing");
+	// check that root was closed
+	if ! parse_stack.empty_stack() {
+		return Err(errors::ParsingError::new(format!(
+			"root element not closed"
+		)).into());
+	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
 		parse_stack.to_dom()?,
