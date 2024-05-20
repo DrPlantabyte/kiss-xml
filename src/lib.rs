@@ -756,8 +756,13 @@ fn real_text(text: &str) -> Option<String> {
 	// extract actual text
 	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
 	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
-	let text = matcher.replace(text, "\n");
-	Some(unescape(text.trim_start()))
+	let text = matcher.replace(text, "\n").to_string();
+	// trim multi-line text
+	let final_text = match text.contains("\n"){
+		true => text.trim(),
+		false => text.as_str()
+	};
+	Some(unescape(final_text))
 }
 
 /// get line and column number for index to use for error reporting

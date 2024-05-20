@@ -134,8 +134,8 @@ fn test_dom_parsing() {
 	assert_eq!(root.children().count(), 8, "Wrong number of child nodes found in DOM (should be 8: 1 comment and 7 elements)");
 	assert_eq!(root.children().filter(|n| n.is_element()).count(), 7, "Wrong number of element nodes found in root child nodes");
 	assert_eq!(root.children().filter(|n| n.is_comment()).count(), 1, "Wrong number of comment nodes found in root child nodes");
-	assert_eq!(root.children().filter(|n| n.is_text()).count(), 0, "Wrong number of comment nodes found in root child nodes");
-	assert_eq!(root.first_element_by_name("to").unwrap().text().unwrap().as_str(), "Jani", "content of <to> is wrong");
+	assert_eq!(root.children().filter(|n| n.is_text()).count(), 0, "Wrong number of text nodes found in root child nodes");
+	assert_eq!(root.first_element_by_name("to").unwrap().text().unwrap().as_str(), "Tove", "content of <to> is wrong");
 	assert_eq!(root.elements_by_name("paragraph").count(), 2, "Wrong number of <paragraph> elements found in DOM");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().text().unwrap().as_str(), "Don't forget me this weekend!", "content of first <paragraph> is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().collect::<Vec<_>>()[0].text().unwrap().as_str(), "Don't forget ", "content of first <paragraph> first node is wrong");
