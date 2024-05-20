@@ -742,14 +742,18 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 
 /// singleton regex matcher
 const IS_BLANK_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
+/// inits/gets the Regex singleton
+fn get_is_blank_matcher() -> &'static Regex {
+	let singleton = IS_BLANK_MATCHER_SINGLETON;
+	singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap())
+}
 /// singleton regex matcher
 const INDENTED_LINE_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 /// extracts the actual text (accounting for indenting) from a string slice,
 /// returning None if it is all whitespace
 fn real_text(text: &str) -> Option<String> {
 	// check for empty string
-	let singleton = IS_BLANK_MATCHER_SINGLETON;
-	let matcher = singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap());
+	let matcher = get_is_blank_matcher();
 	if matcher.is_match(text) {
 		return None;
 	}
@@ -757,7 +761,8 @@ fn real_text(text: &str) -> Option<String> {
 	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
 	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
 	let text = matcher.replace(text, "\n").to_string();
-	// trim multi-line text
+	// trim multi-line text:
+	// remove leading \n and following spaces and tabs
 	let final_text = match text.contains("\n"){
 		true => text.trim(),
 		false => text.as_str()
@@ -778,4 +783,15 @@ fn line_and_column(text: &String, pos: usize) -> (usize, usize){
 		if i >= pos {break;}
 	}
 	(line, col)
+}
+/// returns Ok result if indent is valid (spaces or tabs), Err otherwise.
+/// Valid indents are 1 tab character or any number of spaces
+pub(crate) fn validate_indent(indent: &str) -> Result<(), ()> {
+	if indent == "\t" {return Ok(());}
+	for c in indent.chars() {
+		if c != ' ' {
+			return Err(());
+		}
+	}
+	Ok(())
 }

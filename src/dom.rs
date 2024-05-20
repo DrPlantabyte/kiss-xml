@@ -119,9 +119,21 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	}
 
 	/**
-	Produces the XML text representing this XML DOM using the provided indent
+	Produces the XML text representing this XML DOM using the provided indent.
+	# Args:
+	 - *indent* - prefix string to use for indenting the output XML. The indent must be either a
+		single tab character or any number of spaces (otherwise a warning will be printed and the
+		default indent used instead)
 	 */
 	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
+		let mut indent = indent.into();
+		match crate::validate_indent(indent.as_str()){
+			Ok(_) => {},
+			Err(_) => {
+				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				indent = "  ".to_string();
+			}
+		};
 		let mut builder = String::new();
 		match &self.declaration{
 			None => {},
@@ -134,7 +146,7 @@ Produces the XML text representing this XML DOM using the default indent of two 
 			builder.push_str(dtd.to_string().as_str());
 			builder.push_str("\n");
 		}
-		builder.push_str(&self.root_element.to_string_with_indent(indent.into().as_str()));
+		builder.push_str(&self.root_element.to_string_with_indent(indent.as_str()));
 		builder.push_str("\n");
 		return builder;
 	}
@@ -280,6 +292,10 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 
 	/**
 	Writes this Node to a string with the provided indent (used to serialize to XML)
+	# Args:
+	 - *indent* - prefix string to use for indenting the output XML. The indent must be either a
+		single tab character or any number of spaces (otherwise a warning will be printed and the
+		default indent used instead)
 	 */
 	fn to_string_with_indent(&self, indent: &str) -> String;
 
@@ -1361,7 +1377,13 @@ impl Node for Element {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, indent: &str) -> String {
-		self.to_string_with_prefix_and_indent("", indent)
+		match crate::validate_indent(indent){
+			Ok(_) => self.to_string_with_prefix_and_indent("", indent),
+			Err(_) => {
+				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				self.to_string_with_prefix_and_indent("", "  ")
+			}
+		}
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
