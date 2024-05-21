@@ -140,11 +140,11 @@ fn test_dom_parsing() {
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().text().unwrap().as_str(), "Don't forget me this weekend!", "content of first <paragraph> is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().collect::<Vec<_>>()[0].text().unwrap().as_str(), "Don't forget ", "content of first <paragraph> first node is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().count(), 3, "First <paragraph> should have 3 nodes: text, element, text");
-	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().filter(|n| n.is_text()).count(), 0, "Wrong number of comment nodes found in root child nodes");
+	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().filter(|n| n.is_comment()).count(), 0, "Wrong number of comment nodes found in root child nodes");
 	assert_eq!(root.elements_by_name("paragraph").collect::<Vec<_>>()[1].text().unwrap().as_str(), " - Jani", "Wrong number of <paragraph> elements found in DOM");
 	assert_eq!(root.first_element_by_name("signed").unwrap().get_attr("signer").unwrap(), "Jani Jane", "Attribute 'signer' of <signed> should be 'Jani Jane'");
 	assert!(root.first_element_by_name("signed").unwrap().get_attr("nonexistant").is_none(), "<signed> should not have attribute 'nonexistant'");
-	assert_eq!(root.search(|_| true).count(), 18, "Wrong number of nodes found in recursive search of root element");
+	assert_eq!(root.search(|_| true).count(), 17, "Wrong number of nodes found in recursive search of root element");
 	assert_eq!(root.search(|n| n.is_text()).count(), 8, "Wrong number of text nodes found in recursive search of root element");
 	assert!(root.first_element_by_name("b").is_err(), "<b> is not a child of the root element (is grand-child)");
 	assert_eq!(root.search_elements_by_name("b").count(), 1, "Did not find <b> in recursive search");

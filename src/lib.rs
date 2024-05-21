@@ -742,32 +742,52 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 
 /// singleton regex matcher
 const IS_BLANK_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
-/// inits/gets the Regex singleton
-fn get_is_blank_matcher() -> &'static Regex {
-	let singleton = IS_BLANK_MATCHER_SINGLETON;
-	singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap())
-}
 /// singleton regex matcher
 const INDENTED_LINE_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 /// extracts the actual text (accounting for indenting) from a string slice,
 /// returning None if it is all whitespace
 fn real_text(text: &str) -> Option<String> {
 	// check for empty string
-	let matcher = get_is_blank_matcher();
+	let singleton = IS_BLANK_MATCHER_SINGLETON;
+	let matcher = singleton.get_or_init(|| Regex::new(r#"^\s*$"#).unwrap());
 	if matcher.is_match(text) {
 		return None;
 	}
 	// extract actual text
 	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
 	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
-	let text = matcher.replace(text, "\n").to_string();
+	let mut text = matcher.replace(text, "\n").to_string();
 	// trim multi-line text:
 	// remove leading \n and following spaces and tabs
-	let final_text = match text.contains("\n"){
-		true => text.trim(),
-		false => text.as_str()
+	if text.starts_with("\n") || text.starts_with("\r\n") {
+		text = text.trim_start_matches("\r")
+			.trim_start_matches("\n")
+			.trim_start_matches(" ")
+			.trim_start_matches("\t").to_string();
+	}
+	// remove trailing \n and following spaces and tabs
+	let last_non_ws_index = text.char_indices()
+		.filter(|(_i, c)| !c.is_whitespace())
+		.map(|(i, _c)| i).last();
+	match last_non_ws_index{
+		None => {}  // empty string
+		Some(index) => {
+			// get next char
+			match text.get(index+1..index+2){
+				None => {}  // next char is multi-byte
+				Some(c) => {
+					if c == "\n" {
+						// ends in \n followed by whitespace, trim back to \n
+						text = text.trim_end_matches("\t")
+							.trim_end_matches(" ")
+							.trim_end_matches("\n")
+							.trim_end_matches("\r").to_string();
+					}
+				}
+			};
+		}
 	};
-	Some(unescape(final_text))
+	Some(unescape(text))
 }
 
 /// get line and column number for index to use for error reporting

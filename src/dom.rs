@@ -766,6 +766,16 @@ impl Element {
 	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>>{
 		self.child_nodes.iter_mut()
 	}
+	/** Recursively iterates through all child nodes, as well as children of children. Iteration order is arbitrary and not sequential through the DOM. */
+	pub fn children_recursive(&self) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> {
+		Box::new(
+			self.child_nodes.iter()
+			.chain(
+				self.child_elements().map(|e| e.children_recursive()
+				).flatten()
+			)
+		)
+	}
 
 	/** Deletes all child nodes from this element */
 	pub fn clear_children(&mut self) {self.child_nodes.clear()}
@@ -937,11 +947,7 @@ impl Element {
 	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_nodes.iter()
-				.chain(
-					self.child_elements().map(|e| e.child_nodes.iter()
-					).flatten()
-				).filter(predicate)
+			self.children_recursive().filter(predicate)
 		)
 	}
 	/*
@@ -981,10 +987,9 @@ impl Element {
 	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &Element> + '_> where P: FnMut(&&Element) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_elements()
-				.chain(
-					self.child_elements().map(|e| e.child_elements()).flatten()
-				).filter(predicate)
+			self.search(|n| n.is_element())
+				.map(|n| n.as_element().expect("logic error"))
+				.filter(predicate)
 		)
 	}
 	/**
@@ -1025,7 +1030,7 @@ impl Element {
 	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Text> + '_> where P: Fn(&&Text) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.search_elements(|n| n.is_text())
+			self.search(|n| n.is_text())
 			.map(|n| n.as_text().expect("logic error"))
 			.filter(predicate)
 		)
@@ -1035,7 +1040,7 @@ impl Element {
 	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Comment> + '_> where P: Fn(&&Comment) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.search_elements(|n| n.is_comment())
+			self.search(|n| n.is_comment())
 				.map(|n| n.as_comment().expect("logic error"))
 				.filter(predicate)
 		)
