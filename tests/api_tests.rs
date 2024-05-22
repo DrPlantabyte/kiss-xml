@@ -186,23 +186,22 @@ fn test_modify_dom() {
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<!--comment-->
-	<mydata author="some dude">
+	<mydata>
 		This is my data
 		<!--inserted comment-->
 		<properties>
-			<property name="z" value="0" />
-			<property name="a" value="1" />
-			<property name="b" value="2" />
-			<property name="c" value="3" />
+			<property name="z" value="0"/>
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
+			<property name="c" value="3"/>
 		</properties>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 		<other/>
 		<other/>
 		inserted text
 	</mydata>
-</root>"#;
+</root>
+"#;
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
@@ -218,7 +217,9 @@ fn test_remove_1(){
 		.remove_all(
 			|n| n.is_text() && n.text().unwrap().contains("My metadata")
 		);
-	doc.root_element_mut().remove_elements_by_name("other");
+	doc.root_element_mut()
+		.first_element_by_name_mut("mydata").unwrap()
+		.remove_elements_by_name("other");
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.first_element_by_name_mut("properties").unwrap()
@@ -229,11 +230,12 @@ fn test_remove_1(){
 	<!--comment-->
 	<mydata>
 		<properties>
-			<property name="a" value="1" />
+			<property name="a" value="1"/>
 		</properties>
 		<meta/>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
