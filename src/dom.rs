@@ -950,11 +950,6 @@ impl Element {
 			self.children_recursive().filter(predicate)
 		)
 	}
-	/*
-	NOTE: cannot do recursive mutable iterator (imagine if the iterator has both
-	 parent and child elements in it and the user called `remove_all()` on the
-	 parent element before reaching the child element)
-	 */
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
 
@@ -1266,6 +1261,24 @@ impl Element {
 		let count =  rm_indices.len();
 		for i in rm_indices {
 			self.child_nodes.remove(i);
+		}
+		return count;
+	}
+
+	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
+
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use `remove_by()` instead.
+	 */
+	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
+		let new_pred = |n: &Box<dyn Node>| {
+			match n.is_element(){
+				true => predicate(n.as_element().unwrap()),
+				false => false
+			}
+		};
+		let mut count =  self.remove_by(&new_pred);
+		for e in self.child_elements_mut() {
+			count += e.remove_all(&new_pred);
 		}
 		return count;
 	}

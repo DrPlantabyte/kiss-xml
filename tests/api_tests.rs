@@ -208,7 +208,6 @@ fn test_modify_dom() {
 #[test]
 fn test_remove_1(){
 	use kiss_xml;
-	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	doc.root_element_mut().remove_attr("author");
 	doc.root_element_mut()
@@ -257,8 +256,8 @@ fn test_remove_2(){
 	<mydata>
 		This is my data
 		<properties>
-			<property name="a" value="1" />
-			<property name="b" value="2" />
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
 		</properties>
 	</mydata>
 </root>"#;
