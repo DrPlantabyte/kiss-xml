@@ -208,6 +208,7 @@ fn test_modify_dom() {
 #[test]
 fn test_remove_1(){
 	use kiss_xml;
+	use kiss_xml::dom::*;
 	let mut doc = kiss_xml::parse_str(sample_xml_2()).unwrap();
 	doc.root_element_mut().remove_attr("author");
 	doc.root_element_mut()
@@ -215,7 +216,7 @@ fn test_remove_1(){
 		.remove(0).unwrap();
 	doc.root_element_mut()
 		.remove_all(
-			|n| n.is_text() && n.text().unwrap().contains("My metadata")
+			&|n| n.is_text() && n.text().unwrap().contains("My metadata")
 		);
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
@@ -274,7 +275,7 @@ fn test_remove_3(){
 		.first_element_by_name_mut("properties").unwrap()
 		.remove_elements_by_name("property");
 	doc.root_element_mut()
-		.remove_all(|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name() == "other"));
+		.remove_all(&|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name() == "other"));
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
@@ -409,9 +410,9 @@ r#"<html>
 		.collect::<Vec<_>>();
 	let first_comment = all_comments.first().unwrap();
 	println!("Comment: {}", first_comment.text().unwrap());
-	doc.root_element_mut().remove_all(|n| n.is_comment());
+	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(&|_| true);
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
 		vec![
 			Element::new_with_text("h1", "Chapter 1").unwrap().boxed(),

@@ -1206,11 +1206,26 @@ impl Element {
 		}
 		Ok(self.child_nodes.remove(index))
 	}
-	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive). */
-	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: Fn(&dyn Node) -> bool {
+	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
+
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use `remove_by()` instead.
+	 */
+	pub fn remove_all<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
+		let mut count =  self.remove_by(predicate);
+		for e in self.child_elements_mut() {
+			count += e.remove_all(predicate);
+		}
+		return count;
+	}
+
+	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive).
+
+	This function is not recursive. For recursive removal, use `remove_all()` instead.
+	 */
+	pub fn remove_by<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
-			if predicate(self.child_nodes[i].as_ref()) {
+			if predicate(&self.child_nodes[i]) {
 				rm_indices.push(i);
 			}
 		}
