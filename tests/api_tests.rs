@@ -260,7 +260,8 @@ fn test_remove_2(){
 			<property name="b" value="2"/>
 		</properties>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
@@ -280,11 +281,10 @@ fn test_remove_3(){
 	<mydata>
 		This is my data
 		<properties/>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
