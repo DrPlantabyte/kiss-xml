@@ -341,7 +341,7 @@ pub struct Element {
 	/// optional xmlns (if xmlns_prefix is None then the xmlns is default namespace)
 	xmlns_prefix: Option<String>,
 	/// xmlns definitions for this element, if any
-	xmlns_context: Option<HashMap<String, String>>
+	xmlns_context: HashMap<String, String>
 }
 
 impl Element {
@@ -377,11 +377,32 @@ impl Element {
 				}
 			}
 		}
+		// xmlns check
+		let mut xmlns = xmlns;
+		if xmlns.is_none() {
+			match &xmlns_prefix {
+				None => {
+					// default xmlns
+					xmlns = match attrs.get("xmlns"){
+						None => None,
+						Some(ns) => Some(ns.to_string())
+					}
+				},
+				Some(prefix) => {
+					// prefixed xmlns
+					xmlns = match attrs.get(&format!("xmlns:{prefix}")){
+						None => None,
+						Some(ns) => Some(ns.to_string())
+					}
+				}
+			};
+		}
+		println!("new <{}> xlmns = {:?}", name, xmlns);
 		// set the XML NS from the attributes and provided args
 		let mut elem = Self {
 			name: name,
 			child_nodes: Vec::new(),
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
@@ -505,16 +526,8 @@ impl Element {
 	Note that the default xmlns (if present) is saved as prefix ""
 	# Args
 	* attrs - kay=value pairs for the element
-	* parent_default_xmlns - inherited default namespace (or `None`)
 	 */
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<String>) -> Option<HashMap<String, String>> {
-		// first check for default xlmns
-		let mut default_xmlns = parent_default_xmlns;
-		if attrs.contains_key("xmlns") {
-			default_xmlns = Some(
-				attrs.get("xmlns").expect("logic error").to_string()
-			);
-		}
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>) -> HashMap<String, String> {
 		// then parse xmlns prefixes
 		let mut prefixes: HashMap<String, String> = HashMap::new();
 		for (k, v) in attrs.iter() {
@@ -526,13 +539,7 @@ impl Element {
 				prefixes.insert(prefix, ns);
 			}
 		}
-		// if there are no xmlns defs, return None
-		if default_xmlns.is_none() && prefixes.len() == 0 {
-			return None;
-		} else {
-			// return prefix map
-			return Some(prefixes);
-		}
+		return prefixes;
 	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
 	pub fn name(&self) -> String {
@@ -710,10 +717,15 @@ impl Element {
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	pub fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
-		Self::xmlns_context_from_attributes(&self.attributes, None)
+		let prefixes = Self::xmlns_context_from_attributes(&self.attributes);
+		if prefixes.is_empty() {
+			None
+		} else {
+			Some(prefixes)
+		}
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	pub(crate) fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
+	pub(crate) fn get_namespace_context(&self) -> HashMap<String, String> {self.xmlns_context.clone()}
 	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
 	pub(crate) fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
 		// inherit default namespace unless this element also defines one
@@ -727,19 +739,26 @@ impl Element {
 			Some(_) => {/* do nothing */}
 		}
 		// add prefixed namespaces (except where already defined locally)
-		match parent_prefixes{
+		match parent_prefixes {
 			None => {}
 			Some(prefixes) => {
-				if self.xmlns_context.is_none() {
-					self.xmlns_context = Some(HashMap::new())
-				}
-				let context = &mut self.xmlns_context.clone().expect("logic error");
 				for (prefix, ns) in prefixes {
-					if ! context.contains_key(prefix.as_str()) {
-						context.insert(prefix, ns);
+					if ! self.xmlns_context.contains_key(prefix.as_str()) {
+						let _ = &self.xmlns_context.insert(prefix, ns);
 					}
 				}
 			}
+		}
+		// set this namespace if a prefix was specified without xmlns def attribute
+		if self.xmlns.is_none() {
+			match &self.xmlns_prefix {
+				None => {}
+				Some(prefix) => {
+					// get prefix namespace from context
+					println!("getting namespace from context for prefix {prefix}");
+					self.xmlns = self.xmlns_context.get(prefix).map(String::clone);
+				}
+			};
 		}
 	}
 	/** flips the order of child nodes (non-recursive) */
@@ -1066,22 +1085,29 @@ impl Element {
 		self.append_boxed(node.boxed());
 	}
 	/** same as [append(...)](Element::append()) but for a Box&lt;dyn Node&gt; */
-	pub fn append_boxed(&mut self, node: Box<dyn Node>) {
-		let is_element = node.is_element();
+	pub fn append_boxed(&mut self, mut node: Box<dyn Node>) {
+		Self::apply_xmlns_context_to_child_node(self.default_namespace(), self.xmlns_context.clone(), &mut node);
 		self.child_nodes.push(node);
-		if is_element {
-			let df_xmlns = self.default_namespace().clone();
-			let xmlns_context = self.get_namespace_context().clone();
-			// update xmlns prefix context if we just added an element
-			self.child_nodes.last_mut().expect("logic error")
-				.as_element_mut().expect("logic error")
-				.set_namespace_context(
-					df_xmlns,
-					xmlns_context
-				);
-		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
+	}
+	/** Applies this element's context to the given child */
+	fn apply_xmlns_context_to_child_node(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, node: &mut Box<dyn Node>) {
+		let is_element = node.is_element();
+		if is_element {
+			Self::apply_xmlns_context_to_child_element(
+				df_xmlns, xmlns_context,
+				node.as_element_mut().expect("logic error")
+			);
+		}
+	}
+	/** Applies the default xmlns and prefixed xmlns context to the given child */
+	fn apply_xmlns_context_to_child_element(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, child: &mut Element) {
+		// update xmlns prefix context if we just added an element
+		child.set_namespace_context(
+			df_xmlns,
+			Some(xmlns_context)
+		);
 	}
 	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {
@@ -1153,15 +1179,11 @@ impl Element {
 			i += 1;
 		}
 		// then apply the xmlns context to the elements
-		let df_xmlns = self.default_namespace().clone();
-		let xmlns_context = self.get_namespace_context().clone();
 		for i in elem_indices {
-			self.child_nodes[i]
-				.as_element_mut().expect("logic error (bad index)")
-				.set_namespace_context(
-					df_xmlns.clone(),
-					xmlns_context.clone()
-				)
+			Self::apply_xmlns_context_to_child_node(
+				self.default_namespace(), self.xmlns_context.clone(),
+			&mut self.child_nodes[i]
+			);
 		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
@@ -1174,19 +1196,11 @@ impl Element {
 			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
 		}
 		// Note: if this is an element, set the namespace context
-		let is_element = node.is_element();
 		self.child_nodes.insert(index, node.boxed());
-		if is_element {
-			let df_xmlns = self.default_namespace().clone();
-			let xmlns_context = self.get_namespace_context().clone();
-			// update xmlns prefix context if we just added an element
-			self.child_nodes.get_mut(index).expect("logic error")
-				.as_element_mut().expect("logic error")
-				.set_namespace_context(
-					df_xmlns,
-					xmlns_context
-				);
-		}
+		Self::apply_xmlns_context_to_child_node(
+			self.default_namespace(), self.xmlns_context.clone(),
+			self.child_nodes.last_mut().unwrap()
+		);
 		// clean-up text nodes
 		self.cleanup_text_nodes();
 		// done
@@ -1449,7 +1463,7 @@ impl Default for Element {
 			attributes: Default::default(),
 			xmlns: None,
 			xmlns_prefix: None,
-			xmlns_context: None,
+			xmlns_context: HashMap::new(),
 		}
 	}
 }

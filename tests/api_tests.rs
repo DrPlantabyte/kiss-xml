@@ -44,16 +44,15 @@ fn sample_xml_2() -> &'static str {
 	<mydata>
 		This is my data
 		<properties>
-			<property name="a" value="1" />
-			<property name="b" value="2" />
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
 		</properties>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 		<other/>
 		<other/>
 	</mydata>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_3() -> &'static str {
@@ -61,7 +60,8 @@ fn sample_xml_3() -> &'static str {
 <root xmlns="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_4() -> &'static str {
@@ -73,7 +73,8 @@ fn sample_xml_4() -> &'static str {
 	<img:width>200</img:width>
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_5() -> &'static str {
@@ -86,7 +87,8 @@ fn sample_xml_5() -> &'static str {
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
 	<dim:height>150</dim:height>
-</root>"#
+</root>
+"#
 }
 
 #[test]

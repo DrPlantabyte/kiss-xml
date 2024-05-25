@@ -367,6 +367,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		} else {
 			// root element?
+			println!("is '{slice}' a root element?");
 			check_element_tag(slice).map_err(|_e| {
 				let (line, col) = line_and_column(&buffer, tag_start);
 				errors::ParsingError::new(format!(
@@ -562,8 +563,9 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 	// check parent for inherited namespaces
 	let (inherited_default_namespace, inherited_xmlns_context) = match parent {
 		None => (None, None),
-		Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
+		Some(parent) => (parent.default_namespace(), Some(parent.get_namespace_context()))
 	};
+	println!("Inherited default namespace {:?} and context {:?} from parent <{:?}>", inherited_default_namespace, inherited_xmlns_context, parent.map(|e|e.tag_name()));
 	if name.contains(":"){
 		let (a, b) = name.split_once(":").unwrap();
 		name = b;
@@ -609,7 +611,7 @@ fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
 	let matcher = singleton.get_or_init(||{
 		// see https://www.w3.org/TR/REC-xml/#sec-common-syn
 		let name_start_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}]"#;
-		let name_char = r#"[A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
+		let name_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
 		let pattern = format!(r#"(?ms)</?{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
 		Regex::new(pattern.as_str()).unwrap()
 	});
