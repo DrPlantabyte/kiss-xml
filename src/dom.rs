@@ -1331,7 +1331,7 @@ impl Element {
 			out.push_str(">");
 			out.push_str(&self.child_nodes[0].to_string_with_indent(indent));
 			out.push_str("</");
-			out.push_str(self.name().as_str());
+			out.push_str(tag_name.as_str());
 			out.push_str(">");
 		} else {
 			// multiple children, prettify

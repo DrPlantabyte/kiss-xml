@@ -66,7 +66,7 @@ fn sample_xml_3() -> &'static str {
 
 fn sample_xml_4() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
-<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+<root xmlns:dim="internal://ns/b" xmlns:img="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
 	<depth>50</depth>
@@ -80,14 +80,14 @@ fn sample_xml_4() -> &'static str {
 fn sample_xml_5() -> &'static str {
 	// Note: XML elements only inherit the default namespace of their parent, not the prefixed namespace
 	r#"<?xml version="1.0" encoding="UTF-8"?>
-<img:root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+<img:root xmlns:dim="internal://ns/b" xmlns:img="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
 	<img:width>200</img:width>
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
 	<dim:height>150</dim:height>
-</root>
+</img:root>
 "#
 }
 
