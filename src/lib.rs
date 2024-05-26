@@ -35,7 +35,7 @@ To parse an XML file, all you need to do is call the `kiss_xml::parse_filepath(.
 
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
-	let doc = kiss_xml::parse_filepath("my-file.xml")?;
+	let doc = kiss_xml::parse_filepath("tests/my-file.xml")?;
 	println!("{}", doc.to_string());
 	Ok(())
 }
@@ -106,7 +106,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	// print first element content
 	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text().expect("no text"));
 	// write to file
-	doc.write_to_filepath("politics.xml");
+	doc.write_to_filepath("tests/politics.xml");
 	Ok(())
 }
 ```
@@ -129,11 +129,12 @@ r#"<html>
 </html>"#
 	)?;
 	// read and remove the first comment
-	let first_comment = doc.root_element().children()
+	let comments = doc.root_element().children()
 		.filter(|n| n.is_comment())
-		.collect::<Vec<_>>().first()
+		.collect::<Vec<_>>();
+	let first_comment = comments.first()
 		.ok_or(DoesNotExistError::new("no comments in DOM"))?;
-	println!("Comment: {}", first_comment.text()?);
+	println!("Comment: {}", first_comment.text().unwrap());
 	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
 	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(&|_| true);

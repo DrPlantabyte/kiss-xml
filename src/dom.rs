@@ -163,6 +163,12 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	 */
 	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
 		use std::fs;
+		// if parent dir does not exist, create it
+		match path.as_ref().parent(){
+			None => {}
+			Some(dir) => fs::create_dir_all(dir)?
+		};
+		// write to file
 		fs::write(path, self.to_string_with_indent(indent))
 	}
 
