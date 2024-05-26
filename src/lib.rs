@@ -131,11 +131,12 @@ r#"<html>
 	// read and remove the first comment
 	let first_comment = doc.root_element().children()
 		.filter(|n| n.is_comment())
-		.collect::<Vec<_>>().first()?;
+		.collect::<Vec<_>>().first()
+		.ok_or(DoesNotExistError::new("no comments in DOM"))?;
 	println!("Comment: {}", first_comment.text()?);
-	doc.root_element_mut().remove_all(|n| n.is_comment());
+	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(&|_| true);
 	doc.root_element_mut().first_element_by_name_mut("body")?.append_all(
 		vec![
 			Element::new_with_text("h1", "Chapter 1")?.boxed(),

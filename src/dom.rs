@@ -434,8 +434,8 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes("b", HashMap::from(&[
-			("style".to_string(), "color: blue".to_string())
+		let e = Element::new_with_attributes("b", HashMap::from([
+			("style", "color: blue")
 		]))?;
 		println!("{}", e); // prints `<b style="color: blue"/>`
 		Ok(())
@@ -455,9 +455,9 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes_and_text<&str,&str>(
+		let e = Element::new_with_attributes_and_text(
 			"b",
-			HashMap::from(&[
+			HashMap::from([
 				("style", "color: blue")
 			]),
 			"goose"
@@ -477,9 +477,9 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes_and_children<&str,&str>(
+		let e = Element::new_with_attributes_and_children(
 			"contact",
-			HashMap::from(&[
+			HashMap::from([
 				("id", "123")
 			]),
 			vec![Element::new_with_text("name", "Billy Bob")?.boxed()]
@@ -507,7 +507,7 @@ impl Element {
 		use std::collections::HashMap;
 		let e = Element::new_with_children(
 			"contact",
-			vec![Element::new_with_text("name", "Billy Bob").boxed()]
+			vec![Element::new_with_text("name", "Billy Bob")?.boxed()]
 		)?;
 		println!("{}", e);
 		/* prints:
@@ -872,7 +872,7 @@ impl Element {
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		let n: String = name.into();
@@ -957,7 +957,7 @@ impl Element {
 		for fantasy_book in library.root_element().search(
 			|n| n.is_element() && n.as_element().unwrap().get_attr("genre") == Some(&"fantasy".to_string())
 		){
-			println!("{}", fantasy_book.expect("no title").text());
+			println!("{}", fantasy_book.text().expect("no title"));
 		}
 		Ok(())
 	}
@@ -992,7 +992,7 @@ impl Element {
 		for fantasy_book in library.root_element().search_elements(
 			|e| e.get_attr("genre") == Some(&String::from("fantasy"))
 		){
-			println!("{}", fantasy_book.expect("no title").text());
+			println!("{}", fantasy_book.text().expect("no title"));
 		}
 		Ok(())
 	}
