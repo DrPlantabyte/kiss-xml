@@ -399,7 +399,7 @@ fn test_modify_text_and_comments() {
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
-	<!-- this is a comment ->
+	<!-- this is a comment -->
 	<body>
 		TODO: content here
 	</body>

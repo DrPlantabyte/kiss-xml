@@ -577,7 +577,7 @@ impl Element {
 	}
 
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
 	# Example
@@ -610,7 +610,7 @@ impl Element {
 		let ns = namespace.map(|s| s.to_string());
 		self.child_elements().filter(move |c| c.xmlns == ns)
 	}
-	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
+	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children.
 
 	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
 	# Example
@@ -647,7 +647,7 @@ impl Element {
 		self.child_elements_mut().filter(move |c| c.xmlns == ns)
 	}
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
 	# Example
@@ -680,7 +680,7 @@ impl Element {
 		self.child_elements().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
 	# Example
@@ -806,7 +806,7 @@ impl Element {
 	/**
 	Gets the first child element with the given element name. If no such element exists, an error result is returned.
 
-	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -837,7 +837,7 @@ impl Element {
 	/**
 	Gets the first child element with the given element name as a mutable reference. If no such element exists, an error result is returned.
 
-	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -864,7 +864,7 @@ impl Element {
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		let n: String = name.into();
@@ -1217,7 +1217,34 @@ impl Element {
 	}
 	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
 
-	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use `remove_by()` instead.
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use [remove_by(...)](remove_by()) instead.
+
+	# Example:
+	```rust
+	fn main() -> Result<(),kiss_xml::errors::KissXmlError> {
+		use kiss_xml;
+		let xml = r#"
+		<list>
+			<task>Go to work</task>
+			<work>Web development</work>
+			<task>Do homework</task>
+			<task>Party!</task>
+		</list>
+		"#;
+		let mut dom = kiss_xml::parse_str(xml)?;
+		dom.root_element_mut().remove_all(
+			&|n| n.text().unwrap_or(String::new()).contains("work")
+		);
+		println!("Fun list:\n{}", dom);
+		// prints:
+		// Fun list:
+		// <list>
+		//   <work>Web development</work>
+		//   <task>Party!</task>
+		// </list>
+		Ok(())
+	}
+	```
 	 */
 	pub fn remove_all<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
 		let mut count =  self.remove_by(predicate);
@@ -1229,7 +1256,7 @@ impl Element {
 
 	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive).
 
-	This function is not recursive. For recursive removal, use `remove_all()` instead.
+	This function is not recursive. For recursive removal, use [remove_all(...)](remove_all()) instead.
 	 */
 	pub fn remove_by<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
 		let mut rm_indices: Vec<usize> = Vec::new();
@@ -1260,7 +1287,7 @@ impl Element {
 	}
 	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
-	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use [remove_all_elements(...)](remove_all_elements()) instead. */
 	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
@@ -1281,7 +1308,7 @@ impl Element {
 
 	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
 
-	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use `remove_by()` instead.
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use [remove_by(...)](remove_by()) instead.
 	 */
 	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
 		let new_pred = |n: &Box<dyn Node>| {
@@ -1298,7 +1325,7 @@ impl Element {
 	}
 	/** Removes all child elements matching the given element name (regardless of namespace), returning the number of removed elements.
 
-	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use [remove_all_elements(...)](remove_all_elements()) instead. */
 	pub fn remove_elements_by_name(&mut self, name: impl Into<String>) -> usize {
 		let n: String = name.into();
 		self.remove_elements(move |e| e.name == n)
