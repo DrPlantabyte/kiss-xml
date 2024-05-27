@@ -14,3 +14,6 @@
 # rust/LLVM profiling and coverage analysis
 *.profraw
 cobertura.xml
+
+# random stuff
+politics.xml

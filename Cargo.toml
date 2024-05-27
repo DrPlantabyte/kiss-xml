@@ -1,5 +1,5 @@
 [package]
-name = "kiss-xml"
+name = "kiss_xml"
 authors = ["Christopher Collin Hall"]
 version = "0.0.0"
 edition = "2021"
@@ -14,11 +14,17 @@ categories = ["config", "parsing", "text-processing"] # see https://crates.io/ca
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lints.rust]
+missing_docs = "deny"
+unused_must_use = "deny"
+
 [dependencies]
-# no required dependencies
+dyn-clone = "1"
+regex = "1"
 
 [dev-dependencies]
-# no dev dependencies
+tempfile = "3" # used for testing file I/O in API and unit tests
+chrono = "0.4" # used in some exaples
 
 [build-dependencies]
 # no build dependencies
