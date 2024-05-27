@@ -35,7 +35,7 @@ To parse an XML file, all you need to do is call the `kiss_xml::parse_filepath(.
 
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
-	let doc = kiss_xml::parse_filepath("my-file.xml")?;
+	let doc = kiss_xml::parse_filepath("tests/some-file.xml")?;
 	println!("{}", doc.to_string());
 	Ok(())
 }
@@ -49,6 +49,7 @@ For example:
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<name>My Settings</name>
@@ -56,7 +57,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		<property name="volume" value="11" />
 		<property name="mixer" value="standard" />
 	</sound>
-<config>
+</config>
 "#;
 	// parse XML to a document object model (DOM)
 	let dom = kiss_xml::parse_str(xml)?;
@@ -67,8 +68,8 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	for prop in properties {
 		println!(
 			"{} = {}",
-			prop.get_attr("name")?,
-			prop.get_attr("value")?
+			prop.get_attr("name").ok_or(DoesNotExistError::default())?,
+			prop.get_attr("value").ok_or(DoesNotExistError::default())?
 		);
 	}
 	// print children of the root element
@@ -91,20 +92,21 @@ For example:
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	// make a DOM from scratch
 	let mut doc = Document::new(Element::new_from_name("politicians")?);
-	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
 	doc.root_element_mut().insert(0, Element::new_with_text("person", "John Adams")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
 	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John")?);
 	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name")?);
 	// remove element by index
 	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
-	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text()? == "Jimmy John");
+	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text().or(Some(String::new())).unwrap() == "Jimmy John");
 	// print first element content
-	println!("First politician: {}", doc.root_element().elements_by_name("person").text()?);
+	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text().expect("no text"));
 	// write to file
-	doc.write_to_filepath("politics.xml");
+	doc.write_to_filepath("tests/politics.xml");
 	Ok(())
 }
 ```
@@ -116,40 +118,44 @@ The XML DOM is made up of Node objects (trait objects implementing trait kiss_xm
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
-	<!-- this is a comment ->
+	<!-- this is a comment -->
 	<body>
 		Content goes here
 	</body>
 </html>"#
 	)?;
 	// read and remove the first comment
-	let first_comment = doc.root_element().children()
+	let comments = doc.root_element().children()
 		.filter(|n| n.is_comment())
-		.collect::<Vec<_>>().first()?;
-	println!("Comment: {}", first_comment.text()?);
-	doc.root_element_mut().remove_all(|n| n.is_comment());
+		.collect::<Vec<_>>();
+	let first_comment = comments.first()
+		.ok_or(DoesNotExistError::new("no comments in DOM"))?;
+	println!("Comment: {}", first_comment.text().unwrap());
+	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body").remove_all(|_| true);
-	doc.root_element_mut().first_element_by_name_mut("body").append_all(
-		&[
-			&Element::new_with_text("h1", "Chapter 1"),
-			&Comment::new("Note: there is only one chapter"),
-			&Element::new_with_children("p", &[
-				&Text::new("Once upon a time, there was a little "),
-				&Element::new_with_attributes_and_text(
+	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(&|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body")?.append_all(
+		vec![
+			Element::new_with_text("h1", "Chapter 1")?.boxed(),
+			Comment::new("Note: there is only one chapter").boxed(),
+			Element::new_with_children("p", vec![
+				Text::new("Once upon a time, there was a little ").boxed(),
+				Element::new_with_attributes_and_text::<&str,&str>(
 					"a",
 					HashMap::from([("href","https://en.wikipedia.org/wiki/Gnome")]),
 					"gnome"
-				),
-				&Text::new(" who lived in a walnut tree...")
-			])
+				)?.boxed(),
+				Text::new(" who lived in a walnut tree...").boxed()
+			])?.boxed()
 		]
 	);
 	// print the results
 	println!("{}", doc.to_string());
+	Ok(())
 }
 ```
 
@@ -160,6 +166,7 @@ as-is or with modification, without any limitations.
  */
 
 use std::cell::{OnceCell};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -254,6 +261,23 @@ pub fn unescape(text: impl Into<String>) -> String {
 	buffer
 }
 
+/// comperator for ordering attributes
+pub(crate) fn attribute_order(kv_tup1: &(&String, &String), kv_tup2: &(&String, &String)) -> Ordering {
+	// sort xmlns before rest
+	let a = kv_tup1.0.as_str();
+	let b = kv_tup2.0.as_str();
+	if a == b {
+		return kv_tup1.1.cmp(&kv_tup2.1);
+	}
+	if a.starts_with("xmlns") && !b.starts_with("xmlns") {
+		return Ordering::Less;
+	} else if !a.starts_with("xmlns") && b.starts_with("xmlns") {
+		return Ordering::Greater;
+	} else {
+		return a.cmp(&b);
+	}
+}
+
 /// replaces indices (a, b) in given string with a new string (in-place)
 fn string_insert(buffer: &mut String, indices: (usize, usize), insert: &str) {
 	let back = (&buffer[indices.1..]).to_string();
@@ -322,7 +346,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		} else if slice.starts_with("<!--") {
 			// comments outside root element not supported
 			if no_comment_warn == 0 {
-				eprintln!("WARNING: Encountered comment {slice} outside of root element. Comments outside of the root are not supported and will be ignored.");
+				eprintln!("WARNING: Encountered comment {} outside of root element. Comments outside of the root are not supported and will be ignored.", abbreviate(slice, 32));
 			}
 			no_comment_warn += 1;
 		} else if slice.starts_with("<!DOCTYPE") {
@@ -354,9 +378,10 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 	// now parse the elements, keeping a stack of parents as the tree is traversed
 	let mut parse_stack = parsing::ParseTree::new();
 	let root_slice = &buffer[tag_span.0 .. tag_span.1];
-	let root_element: dom::Element = parse_new_element(root_slice, &buffer, &tag_span, None)?;
+	let root_element: dom::Element = parse_new_element(strip_tag(root_slice).as_str(), &buffer, &tag_span, None)?;
 	parse_stack.push(root_element);
 	let selfclosing_root = root_slice.ends_with("/>");
+	if selfclosing_root {parse_stack.pop()?;}  // pop root if it is  self-closing
 	let mut last_span: (usize, usize);
 	loop {
 		// find next tag
@@ -417,11 +442,12 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			)).into());
 		} else {
 			// element
+			let tag_def = strip_tag(slice);
 			// sanity check
-			check_element_tag(slice).map_err(|_e| {
+			check_element_tag(slice).map_err(|e| {
 				let (line, col) = line_and_column(&buffer, tag_span.0);
 				errors::ParsingError::new(format!(
-					"invalid XML syntax on line {line}, column {col}"
+					"{} (syntax error on line {line}, column {col})", e
 				))
 			})?;
 			// is it a closing tag? If so, pop the parent stack
@@ -434,7 +460,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 						))
 					})?;
 				let open_tagname = active_element.tag_name();
-				if strip_tag(slice) != open_tagname {
+				if tag_def != open_tagname {
 					let (line, col) = line_and_column(&buffer, tag_span.0);
 					return Err(errors::ParsingError::new(format!(
 						"closing tag {slice} does not match <{open_tagname}> (syntax error on line {line}, column {col})"
@@ -442,12 +468,28 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 				}
 				parse_stack.pop()?;
 			} else {
-				// add new element to the stack
-				let new_element = parse_new_element(slice, &buffer, &tag_span, parse_stack.top_element())?;
-				parse_stack.push(new_element);
+				// add new element to the stack, unless it is self-closing
+				let new_element = parse_new_element(tag_def.as_str(), &buffer, &tag_span, parse_stack.top_element())?;
+				if slice.ends_with("/>") {
+					// self-closing
+					parse_stack.append(new_element).map_err(|e| {
+						let (line, col) = line_and_column(&buffer, tag_span.0);
+						errors::ParsingError::new(format!(
+							"{} (syntax error on line {line}, column {col})", e
+						))
+					})?;
+				} else {
+					parse_stack.push(new_element);
+				}
 			}
 		}
 		// repeat
+	}
+	// check that root was closed
+	if ! parse_stack.empty_stack() {
+		return Err(errors::ParsingError::new(format!(
+			"root element not closed"
+		)).into());
 	}
 	// return a DOM document
 	Ok(dom::Document::new_with_decl_dtd(
@@ -470,9 +512,11 @@ fn abbreviate(text: &str, limit: usize) -> String {
 }
 
 /// handles new element
-fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
-	let tag_content = strip_tag(slice);
-	let components = quote_aware_split(tag_content.as_str());
+/// # Args:
+/// * tag_content - XML tag with the leading and trailing </> and whitespace removed (ie output of
+/// `strip_tag(...)`)
+fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usize), parent: Option<&dom::Element>) -> Result<dom::Element, KissXmlError> {
+	let components = quote_aware_split(tag_content);
 	if components.len() == 0 {
 		let (line, col) = line_and_column(&buffer, tag_span.0);
 		return Err(errors::ParsingError::new(format!(
@@ -501,7 +545,7 @@ fn parse_new_element(slice: &str, buffer: &String, tag_span: &(usize, usize), pa
 	// check parent for inherited namespaces
 	let (inherited_default_namespace, inherited_xmlns_context) = match parent {
 		None => (None, None),
-		Some(parent) => (parent.default_namespace(), parent.get_namespace_context())
+		Some(parent) => (parent.default_namespace(), Some(parent.get_namespace_context()))
 	};
 	if name.contains(":"){
 		let (a, b) = name.split_once(":").unwrap();
@@ -548,8 +592,8 @@ fn check_element_tag(text: &str) -> Result<(), errors::KissXmlError> {
 	let matcher = singleton.get_or_init(||{
 		// see https://www.w3.org/TR/REC-xml/#sec-common-syn
 		let name_start_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}]"#;
-		let name_char = r#"[A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
-		let pattern = format!(r#"(?ms)<{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
+		let name_char = r#"[:A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\x{2FF}\x{370}-\x{37D}\x{37F}-\x{1FFF}\x{200C}-\x{200D}\x{2070}-\x{218F}\x{2C00}-\x{2FEF}\x{3001}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFFD}\x{10000}-\x{EFFFF}.\-0-9\xB7\x{0300}-\x{036F}\x{203F}-\x{2040}]"#;
+		let pattern = format!(r#"(?ms)</?{name_start_char}{name_char}*(:{name_start_char}{name_char}*)?(\s+{name_start_char}{name_char}*=(".*?"|'.*?'))*\s*/?>"#);
 		Regex::new(pattern.as_str()).unwrap()
 	});
 	match matcher.is_match(text){
@@ -572,7 +616,7 @@ fn next_tag(buffer: &String, from: usize) -> (Option<usize>, Option<usize>) {
 	let sub_buffer = &buffer[start_index..];
 	if sub_buffer.starts_with("<!--") {
 		// comment
-		return (start, sub_buffer.find("-->").map(|i|i+start_index));
+		return (start, sub_buffer.find("-->").map(|i|i+start_index+3));
 	} else if sub_buffer.starts_with("<?") {
 		// declaration, look for ?> but handle quoting
 		return (start, quote_aware_find(sub_buffer, "?>", 2).map(|i|i+start_index+2))
@@ -617,6 +661,9 @@ fn quote_aware_split(text: &str) -> Vec<String> {
 			// normal text
 			builder.push(c);
 		}
+	}
+	if !builder.is_empty() {
+		vec.push(builder);
 	}
 	return vec;
 }
@@ -691,8 +738,38 @@ fn real_text(text: &str) -> Option<String> {
 	// extract actual text
 	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
 	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
-	let text = matcher.replace(text, "\n");
-	Some(unescape(text.trim_start()))
+	let mut text = matcher.replace(text, "\n").to_string();
+	// trim multi-line text:
+	// remove leading \n and following spaces and tabs
+	if text.starts_with("\n") || text.starts_with("\r\n") {
+		text = text.trim_start_matches("\r")
+			.trim_start_matches("\n")
+			.trim_start_matches(" ")
+			.trim_start_matches("\t").to_string();
+	}
+	// remove trailing \n and following spaces and tabs
+	let last_non_ws_index = text.char_indices()
+		.filter(|(_i, c)| !c.is_whitespace())
+		.map(|(i, _c)| i).last();
+	match last_non_ws_index{
+		None => {}  // empty string
+		Some(index) => {
+			// get next char
+			match text.get(index+1..index+2){
+				None => {}  // next char is multi-byte
+				Some(c) => {
+					if c == "\n" {
+						// ends in \n followed by whitespace, trim back to \n
+						text = text.trim_end_matches("\t")
+							.trim_end_matches(" ")
+							.trim_end_matches("\n")
+							.trim_end_matches("\r").to_string();
+					}
+				}
+			};
+		}
+	};
+	Some(unescape(text))
 }
 
 /// get line and column number for index to use for error reporting
@@ -708,4 +785,15 @@ fn line_and_column(text: &String, pos: usize) -> (usize, usize){
 		if i >= pos {break;}
 	}
 	(line, col)
+}
+/// returns Ok result if indent is valid (spaces or tabs), Err otherwise.
+/// Valid indents are 1 tab character or any number of spaces
+pub(crate) fn validate_indent(indent: &str) -> Result<(), ()> {
+	if indent == "\t" {return Ok(());}
+	for c in indent.chars() {
+		if c != ' ' {
+			return Err(());
+		}
+	}
+	Ok(())
 }

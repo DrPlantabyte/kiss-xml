@@ -22,6 +22,14 @@ impl ParseTree {
 	pub fn new() -> Self {
 		Self::default()
 	}
+	/// returns true if the simulated "stack" is empty, false otherwise. This can still return true
+	/// even if the internal HashMap is not empty
+	pub fn empty_stack(&self) -> bool {
+		match self.pos {
+			None => true,
+			Some(_) => false
+		}
+	}
 	/// push a new element to the stack
 	pub fn push(&mut self, new_element: Element) {
 		if self.pos.is_none() {
@@ -86,7 +94,7 @@ impl ParseTree {
 	}
 	/// converts the whole parse tree to a DOM, returning the root element
 	pub fn to_dom(mut self) -> Result<Element, KissXmlError> {
-		if self.pos.is_none() || self.data.is_empty() {
+		if self.data.is_empty() {
 			return Err(ParsingError::new("no root element").into());
 		}
 		// depth-first DOM construction
@@ -116,10 +124,8 @@ impl ParseTree {
 		// flip children because they were added in reverse order
 		e.reverse_children();
 		// done
-		// TODO: figure out a better way to do a downcast deref-move without cloning
-		// (until then, I hope the LLVM compiler is smart enough to figure out that I want a
-		// deref-move, not a copy-and-delete, and optimize it to do teh right thing)
-		return Ok(e.clone());
+		// use mem::take to do a "DerefMove" operation
+		return Ok(std::mem::take(e));
 	}
 }
 

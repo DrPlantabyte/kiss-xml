@@ -6,7 +6,7 @@ fn test_xml_escapes() {
 	let unescaped = r#"&<>'""#;
 	let escaped = "&amp;&lt;&gt;&apos;&quot;";
 	let escaped_text = r#"&amp;&lt;&gt;'""#;
-	let escaped_attribute = "&amp;<>&apos;&quot;";
+	let escaped_attribute = "&amp;&lt;&gt;&apos;&quot;";
 	assert_eq!(kiss_xml::escape(unescaped), escaped, "Incorrect escaping of XML reserved characters");
 	assert_eq!(kiss_xml::unescape(escaped), unescaped, "Incorrect unescaping of XML reserved characters");
 	assert_eq!(kiss_xml::text_escape(unescaped), escaped_text, "Incorrect escaping of XML reserved characters");
@@ -44,16 +44,15 @@ fn sample_xml_2() -> &'static str {
 	<mydata>
 		This is my data
 		<properties>
-			<property name="a" value="1" />
-			<property name="b" value="2" />
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
 		</properties>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 		<other/>
 		<other/>
 	</mydata>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_3() -> &'static str {
@@ -61,32 +60,35 @@ fn sample_xml_3() -> &'static str {
 <root xmlns="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_4() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
-<root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+<root xmlns:dim="internal://ns/b" xmlns:img="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
 	<depth>50</depth>
 	<img:width>200</img:width>
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
-</root>"#
+</root>
+"#
 }
 
 fn sample_xml_5() -> &'static str {
 	// Note: XML elements only inherit the default namespace of their parent, not the prefixed namespace
 	r#"<?xml version="1.0" encoding="UTF-8"?>
-<img:root xmlns:img="internal://ns/a" xmlns:dim="internal://ns/b">
+<img:root xmlns:dim="internal://ns/b" xmlns:img="internal://ns/a">
 	<width>200</width>
 	<height>150</height>
 	<img:width>200</img:width>
 	<img:height>150</img:height>
 	<dim:width>200</dim:width>
 	<dim:height>150</dim:height>
-</root>"#
+</img:root>
+"#
 }
 
 #[test]
@@ -134,19 +136,19 @@ fn test_dom_parsing() {
 	assert_eq!(root.children().count(), 8, "Wrong number of child nodes found in DOM (should be 8: 1 comment and 7 elements)");
 	assert_eq!(root.children().filter(|n| n.is_element()).count(), 7, "Wrong number of element nodes found in root child nodes");
 	assert_eq!(root.children().filter(|n| n.is_comment()).count(), 1, "Wrong number of comment nodes found in root child nodes");
-	assert_eq!(root.children().filter(|n| n.is_text()).count(), 0, "Wrong number of comment nodes found in root child nodes");
-	assert_eq!(root.first_element_by_name("to").unwrap().text().unwrap().as_str(), "Jani", "content of <to> is wrong");
+	assert_eq!(root.children().filter(|n| n.is_text()).count(), 0, "Wrong number of text nodes found in root child nodes");
+	assert_eq!(root.first_element_by_name("to").unwrap().text().unwrap().as_str(), "Tove", "content of <to> is wrong");
 	assert_eq!(root.elements_by_name("paragraph").count(), 2, "Wrong number of <paragraph> elements found in DOM");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().text().unwrap().as_str(), "Don't forget me this weekend!", "content of first <paragraph> is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().collect::<Vec<_>>()[0].text().unwrap().as_str(), "Don't forget ", "content of first <paragraph> first node is wrong");
 	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().count(), 3, "First <paragraph> should have 3 nodes: text, element, text");
-	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().filter(|n| n.is_text()).count(), 0, "Wrong number of comment nodes found in root child nodes");
+	assert_eq!(root.first_element_by_name("paragraph").unwrap().children().filter(|n| n.is_comment()).count(), 0, "Wrong number of comment nodes found in root child nodes");
 	assert_eq!(root.elements_by_name("paragraph").collect::<Vec<_>>()[1].text().unwrap().as_str(), " - Jani", "Wrong number of <paragraph> elements found in DOM");
 	assert_eq!(root.first_element_by_name("signed").unwrap().get_attr("signer").unwrap(), "Jani Jane", "Attribute 'signer' of <signed> should be 'Jani Jane'");
 	assert!(root.first_element_by_name("signed").unwrap().get_attr("nonexistant").is_none(), "<signed> should not have attribute 'nonexistant'");
-	assert_eq!(root.search(|_| true).count(), 18, "Wrong number of nodes found in recursive search of root element");
+	assert_eq!(root.search(|_| true).count(), 17, "Wrong number of nodes found in recursive search of root element");
 	assert_eq!(root.search(|n| n.is_text()).count(), 8, "Wrong number of text nodes found in recursive search of root element");
-	assert!(root.first_element_by_name("b").is_none(), "<b> is not a child of the root element (is grand-child)");
+	assert!(root.first_element_by_name("b").is_err(), "<b> is not a child of the root element (is grand-child)");
 	assert_eq!(root.search_elements_by_name("b").count(), 1, "Did not find <b> in recursive search");
 	assert_eq!(root.search_elements_by_name("b").collect::<Vec<_>>().first().unwrap().text().unwrap(), "me", "Did not find text for <b> in recursive search");
 	assert_eq!(root.search_elements(|e| e.name() == "b").count(), 1, "Did not find <b> in recursive search");
@@ -186,23 +188,22 @@ fn test_modify_dom() {
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<!--comment-->
-	<mydata author="some dude">
+	<mydata>
 		This is my data
 		<!--inserted comment-->
 		<properties>
-			<property name="z" value="0" />
-			<property name="a" value="1" />
-			<property name="b" value="2" />
-			<property name="c" value="3" />
+			<property name="z" value="0"/>
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
+			<property name="c" value="3"/>
 		</properties>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 		<other/>
 		<other/>
 		inserted text
 	</mydata>
-</root>"#;
+</root>
+"#;
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
@@ -216,9 +217,11 @@ fn test_remove_1(){
 		.remove(0).unwrap();
 	doc.root_element_mut()
 		.remove_all(
-			|n| n.is_text() && n.text().unwrap().contains("My metadata")
+			&|n| n.is_text() && n.text().unwrap().contains("My metadata")
 		);
-	doc.root_element_mut().remove_elements_by_name("other");
+	doc.root_element_mut()
+		.first_element_by_name_mut("mydata").unwrap()
+		.remove_elements_by_name("other");
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.first_element_by_name_mut("properties").unwrap()
@@ -229,11 +232,12 @@ fn test_remove_1(){
 	<!--comment-->
 	<mydata>
 		<properties>
-			<property name="a" value="1" />
+			<property name="a" value="1"/>
 		</properties>
 		<meta/>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
@@ -254,11 +258,12 @@ fn test_remove_2(){
 	<mydata>
 		This is my data
 		<properties>
-			<property name="a" value="1" />
-			<property name="b" value="2" />
+			<property name="a" value="1"/>
+			<property name="b" value="2"/>
 		</properties>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
@@ -272,17 +277,16 @@ fn test_remove_3(){
 		.first_element_by_name_mut("properties").unwrap()
 		.remove_elements_by_name("property");
 	doc.root_element_mut()
-		.remove_all(|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name() == "other"));
+		.remove_all(&|n| n.is_comment() || (n.is_element() && n.as_element().unwrap().name() == "other"));
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
 		This is my data
 		<properties/>
-		<meta>
-			My metadata goes here
-		</meta>
+		<meta>My metadata goes here</meta>
 	</mydata>
-</root>"#;
+</root>
+"#;
 	let indent = "\t";
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
@@ -395,7 +399,7 @@ fn test_modify_text_and_comments() {
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
-	<!-- this is a comment ->
+	<!-- this is a comment -->
 	<body>
 		TODO: content here
 	</body>
@@ -407,9 +411,9 @@ r#"<html>
 		.collect::<Vec<_>>();
 	let first_comment = all_comments.first().unwrap();
 	println!("Comment: {}", first_comment.text().unwrap());
-	doc.root_element_mut().remove_all(|n| n.is_comment());
+	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
-	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(|_| true);
+	doc.root_element_mut().first_element_by_name_mut("body").unwrap().remove_all(&|_| true);
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
 		vec![
 			Element::new_with_text("h1", "Chapter 1").unwrap().boxed(),

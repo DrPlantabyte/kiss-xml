@@ -8,7 +8,7 @@ A document object model (DOM) is a tree data structure with three different kind
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::Element;
-	let mut doc = kiss_xml::parse_filepath("some-file.xml")?;
+	let mut doc = kiss_xml::parse_filepath("tests/some-file.xml")?;
 	doc.root_element_mut().append(Element::new_with_text("note", "note text")?);
 	println!("{}", doc.to_string_with_indent("\t"));
 	Ok(())
@@ -119,9 +119,21 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	}
 
 	/**
-	Produces the XML text representing this XML DOM using the provided indent
+	Produces the XML text representing this XML DOM using the provided indent.
+	# Args:
+	 - *indent* - prefix string to use for indenting the output XML. The indent must be either a
+		single tab character or any number of spaces (otherwise a warning will be printed and the
+		default indent used instead)
 	 */
 	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
+		let mut indent = indent.into();
+		match crate::validate_indent(indent.as_str()){
+			Ok(_) => {},
+			Err(_) => {
+				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				indent = "  ".to_string();
+			}
+		};
 		let mut builder = String::new();
 		match &self.declaration{
 			None => {},
@@ -134,7 +146,7 @@ Produces the XML text representing this XML DOM using the default indent of two 
 			builder.push_str(dtd.to_string().as_str());
 			builder.push_str("\n");
 		}
-		builder.push_str(&self.root_element.to_string_with_indent(indent.into().as_str()));
+		builder.push_str(&self.root_element.to_string_with_indent(indent.as_str()));
 		builder.push_str("\n");
 		return builder;
 	}
@@ -151,6 +163,12 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	 */
 	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
 		use std::fs;
+		// if parent dir does not exist, create it
+		match path.as_ref().parent(){
+			None => {}
+			Some(dir) => fs::create_dir_all(dir)?
+		};
+		// write to file
 		fs::write(path, self.to_string_with_indent(indent))
 	}
 
@@ -280,6 +298,10 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 
 	/**
 	Writes this Node to a string with the provided indent (used to serialize to XML)
+	# Args:
+	 - *indent* - prefix string to use for indenting the output XML. The indent must be either a
+		single tab character or any number of spaces (otherwise a warning will be printed and the
+		default indent used instead)
 	 */
 	fn to_string_with_indent(&self, indent: &str) -> String;
 
@@ -325,7 +347,7 @@ pub struct Element {
 	/// optional xmlns (if xmlns_prefix is None then the xmlns is default namespace)
 	xmlns_prefix: Option<String>,
 	/// xmlns definitions for this element, if any
-	xmlns_context: Option<HashMap<String, String>>
+	xmlns_context: HashMap<String, String>
 }
 
 impl Element {
@@ -361,11 +383,31 @@ impl Element {
 				}
 			}
 		}
+		// xmlns check
+		let mut xmlns = xmlns;
+		if xmlns.is_none() {
+			match &xmlns_prefix {
+				None => {
+					// default xmlns
+					xmlns = match attrs.get("xmlns"){
+						None => None,
+						Some(ns) => Some(ns.to_string())
+					}
+				},
+				Some(prefix) => {
+					// prefixed xmlns
+					xmlns = match attrs.get(&format!("xmlns:{prefix}")){
+						None => None,
+						Some(ns) => Some(ns.to_string())
+					}
+				}
+			};
+		}
 		// set the XML NS from the attributes and provided args
 		let mut elem = Self {
 			name: name,
 			child_nodes: Vec::new(),
-			xmlns_context: Element::xmlns_context_from_attributes(&attrs, None),
+			xmlns_context: Element::xmlns_context_from_attributes(&attrs),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
 			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
@@ -397,7 +439,7 @@ impl Element {
 	fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		use kiss_xml::dom::*;
 		use std::collections::HashMap;
-		let e = Element::new_with_attributes("b", HashMap::from(&[
+		let e = Element::new_with_attributes("b", HashMap::from([
 			("style", "color: blue")
 		]))?;
 		println!("{}", e); // prints `<b style="color: blue"/>`
@@ -420,7 +462,7 @@ impl Element {
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes_and_text(
 			"b",
-			HashMap::from(&[
+			HashMap::from([
 				("style", "color: blue")
 			]),
 			"goose"
@@ -442,10 +484,10 @@ impl Element {
 		use std::collections::HashMap;
 		let e = Element::new_with_attributes_and_children(
 			"contact",
-			HashMap::from(&[
+			HashMap::from([
 				("id", "123")
 			]),
-			vec![Element::new_with_text("name", "Billy Bob").boxed()]
+			vec![Element::new_with_text("name", "Billy Bob")?.boxed()]
 		)?;
 		println!("{}", e);
 		/* prints:
@@ -470,7 +512,7 @@ impl Element {
 		use std::collections::HashMap;
 		let e = Element::new_with_children(
 			"contact",
-			vec![Element::new_with_text("name", "Billy Bob").boxed()]
+			vec![Element::new_with_text("name", "Billy Bob")?.boxed()]
 		)?;
 		println!("{}", e);
 		/* prints:
@@ -489,16 +531,8 @@ impl Element {
 	Note that the default xmlns (if present) is saved as prefix ""
 	# Args
 	* attrs - kay=value pairs for the element
-	* parent_default_xmlns - inherited default namespace (or `None`)
 	 */
-	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>, parent_default_xmlns: Option<String>) -> Option<HashMap<String, String>> {
-		// first check for default xlmns
-		let mut default_xmlns = parent_default_xmlns;
-		if attrs.contains_key("xmlns") {
-			default_xmlns = Some(
-				attrs.get("xmlns").expect("logic error").to_string()
-			);
-		}
+	fn xmlns_context_from_attributes(attrs: &HashMap<String, String>) -> HashMap<String, String> {
 		// then parse xmlns prefixes
 		let mut prefixes: HashMap<String, String> = HashMap::new();
 		for (k, v) in attrs.iter() {
@@ -510,13 +544,7 @@ impl Element {
 				prefixes.insert(prefix, ns);
 			}
 		}
-		// if there are no xmlns defs, return None
-		if default_xmlns.is_none() && prefixes.len() == 0 {
-			return None;
-		} else {
-			// return prefix map
-			return Some(prefixes);
-		}
+		return prefixes;
 	}
 	/** Returns the tag name of this element (eg "book" for element `<book />`) */
 	pub fn name(&self) -> String {
@@ -554,7 +582,7 @@ impl Element {
 	}
 
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
 	# Example
@@ -573,7 +601,7 @@ impl Element {
 		<dim:width>200</dim:width>
 	</root>"#)?;
 		for e in doc.root_element().elements_by_namespace(Some(&String::from_str("internal://ns/a")?)){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '200'
@@ -587,7 +615,7 @@ impl Element {
 		let ns = namespace.map(|s| s.to_string());
 		self.child_elements().filter(move |c| c.xmlns == ns)
 	}
-	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_mut(...)` instead.
+	/** Returns a list (as an iterator) of all child elements that belong to the given XML namespace. This search is non-recursive, meaning that it only returns children of this element, not children-of-children.
 
 	To get a list of elements that have no XML namespace associated with them, pass `None` as the argument to this function.
 	# Example
@@ -605,11 +633,11 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace_mut(Some("internal://ns/a")){
+		for e in doc.root_element_mut().elements_by_namespace_mut(Some("internal://ns/a")){
 			e.set_text("0");
 		}
 		for e in doc.root_element().elements_by_namespace(Some("internal://ns/a")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '0'
@@ -624,7 +652,7 @@ impl Element {
 		self.child_elements_mut().filter(move |c| c.xmlns == ns)
 	}
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
 	# Example
@@ -643,7 +671,7 @@ impl Element {
 		<dim:width>200</dim:width>
 	</root>"#)?;
 		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '200'
@@ -657,7 +685,7 @@ impl Element {
 		self.child_elements().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/**
-	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	Returns a list (as an iterator) of all child elements that belong to the given XML namespace according to the namespace's prefix (eg `<svg:g xmlns:svg="http://www.w3.org/2000/svg">`). This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 
 	To get a list of elements that have no xmlns prefix associated with them, pass `None` as the argument to this function (this will still return elements with a default namespace as well as elements with no namespace).
 	# Example
@@ -675,11 +703,11 @@ impl Element {
 		<img:height>150</img:height>
 		<dim:width>200</dim:width>
 	</root>"#)?;
-		for e in doc.root_element().elements_by_namespace_prefix_mut(Some("img")){
+		for e in doc.root_element_mut().elements_by_namespace_prefix_mut(Some("img")){
 			e.set_text("-1")
 		}
 		for e in doc.root_element().elements_by_namespace_prefix(Some("img")){
-			println!("img element <{}> contains '{}'", e.name(), e.text())
+			println!("img element <{}> contains {:?}", e.name(), e.text())
 		}
 		/* Prints:
 		img element <width> contains '-1'
@@ -694,10 +722,15 @@ impl Element {
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	pub fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
-		Self::xmlns_context_from_attributes(&self.attributes, None)
+		let prefixes = Self::xmlns_context_from_attributes(&self.attributes);
+		if prefixes.is_empty() {
+			None
+		} else {
+			Some(prefixes)
+		}
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	pub(crate) fn get_namespace_context(&self) -> Option<HashMap<String, String>> {self.xmlns_context.clone()}
+	pub(crate) fn get_namespace_context(&self) -> HashMap<String, String> {self.xmlns_context.clone()}
 	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
 	pub(crate) fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
 		// inherit default namespace unless this element also defines one
@@ -711,19 +744,25 @@ impl Element {
 			Some(_) => {/* do nothing */}
 		}
 		// add prefixed namespaces (except where already defined locally)
-		match parent_prefixes{
+		match parent_prefixes {
 			None => {}
 			Some(prefixes) => {
-				if self.xmlns_context.is_none() {
-					self.xmlns_context = Some(HashMap::new())
-				}
-				let context = &mut self.xmlns_context.clone().expect("logic error");
 				for (prefix, ns) in prefixes {
-					if ! context.contains_key(prefix.as_str()) {
-						context.insert(prefix, ns);
+					if ! self.xmlns_context.contains_key(prefix.as_str()) {
+						let _ = &self.xmlns_context.insert(prefix, ns);
 					}
 				}
 			}
+		}
+		// set this namespace if a prefix was specified without xmlns def attribute
+		if self.xmlns.is_none() {
+			match &self.xmlns_prefix {
+				None => {}
+				Some(prefix) => {
+					// get prefix namespace from context
+					self.xmlns = self.xmlns_context.get(prefix).map(String::clone);
+				}
+			};
 		}
 	}
 	/** flips the order of child nodes (non-recursive) */
@@ -750,6 +789,16 @@ impl Element {
 	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>>{
 		self.child_nodes.iter_mut()
 	}
+	/** Recursively iterates through all child nodes, as well as children of children. Iteration order is arbitrary and not sequential through the DOM. */
+	pub fn children_recursive(&self) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> {
+		Box::new(
+			self.child_nodes.iter()
+			.chain(
+				self.child_elements().map(|e| e.children_recursive()
+				).flatten()
+			)
+		)
+	}
 
 	/** Deletes all child nodes from this element */
 	pub fn clear_children(&mut self) {self.child_nodes.clear()}
@@ -759,9 +808,9 @@ impl Element {
 		self.append(Text::new(text));
 	}
 	/**
-	Gets the first child element with the given element name. If no such element exists, `None` is returned.
+	Gets the first child element with the given element name. If no such element exists, an error result is returned.
 
-	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -773,26 +822,26 @@ impl Element {
 	</body>"#)?;
 		println!("1st <p>: {}",
 			doc.root_element()
-			.first_element_by_name("p").ok_or(Err(DoesNotExistError.default()))?
+			.first_element_by_name("p")?
 		);
 		// prints: "1st <p>: Hello there!"
 		Ok(())
 	}
 	```
 	 */
-	pub fn first_element_by_name(&self, name: impl Into<String>) -> Option<&Element> {
+	pub fn first_element_by_name(&self, name: impl Into<String>) -> Result<&Element, DoesNotExistError> {
 		let n: String = name.into();
 		for e in self.child_elements() {
 			if e.name() == n {
-				return Some(e);
+				return Ok(e);
 			}
 		}
-		None
+		Err(DoesNotExistError::default())
 	}
 	/**
-	Gets the first child element with the given element name as a mutable reference. If no such element exists, `None` is returned.
+	Gets the first child element with the given element name as a mutable reference. If no such element exists, an error result is returned.
 
-	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements(...)](search_elements()) instead.
 	# Example
 	```rust
 	fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -802,24 +851,24 @@ impl Element {
 		<p>Hello there!</p>
 	</body>"#)?;
 		doc.root_element_mut()
-			.first_element_by_name_mut("p").ok_or(Err(DoesNotExistError.default()))?
+			.first_element_by_name_mut("p")?
 			.set_text("Good bye!");
 		Ok(())
 	}
 	```
 	 */
-	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Option<&mut Element> {
+	pub fn first_element_by_name_mut(&mut self, name: impl Into<String>) -> Result<&mut Element, DoesNotExistError> {
 		let n: String = name.into();
 		for e in self.child_elements_mut() {
 			if e.name() == n {
-				return Some(e);
+				return Ok(e);
 			}
 		}
-		None
+		Err(DoesNotExistError::default())
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
 		let n: String = name.into();
@@ -827,7 +876,7 @@ impl Element {
 	}
 	/** Returns a list of all child elements with the given name as an iterator.
 
-		This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use `search_elements_by_name(...)` instead.
+	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
 	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
 		let n: String = name.into();
@@ -910,9 +959,9 @@ impl Element {
 		</root>"#)?;
 		println!("Fantasy books:");
 		for fantasy_book in library.root_element().search(
-			|n| n.is_element() && n.as_element()?.get_attr("genre") == Some(&"fantasy".to_string())
+			|n| n.is_element() && n.as_element().unwrap().get_attr("genre") == Some(&"fantasy".to_string())
 		){
-			println!("{}", fantasy_book.text());
+			println!("{}", fantasy_book.text().expect("no title"));
 		}
 		Ok(())
 	}
@@ -921,18 +970,9 @@ impl Element {
 	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_nodes.iter()
-				.chain(
-					self.child_elements().map(|e| e.child_nodes.iter()
-					).flatten()
-				).filter(predicate)
+			self.children_recursive().filter(predicate)
 		)
 	}
-	/*
-	NOTE: cannot do recursive mutable iterator (imagine if the iterator has both
-	 parent and child elements in it and the user called `remove_all()` on the
-	 parent element before reaching the child element)
-	 */
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
 
@@ -956,7 +996,7 @@ impl Element {
 		for fantasy_book in library.root_element().search_elements(
 			|e| e.get_attr("genre") == Some(&String::from("fantasy"))
 		){
-			println!("{}", fantasy_book.text());
+			println!("{}", fantasy_book.text().expect("no title"));
 		}
 		Ok(())
 	}
@@ -965,10 +1005,9 @@ impl Element {
 	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &Element> + '_> where P: FnMut(&&Element) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.child_elements()
-				.chain(
-					self.child_elements().map(|e| e.child_elements()).flatten()
-				).filter(predicate)
+			self.search(|n| n.is_element())
+				.map(|n| n.as_element().expect("logic error"))
+				.filter(predicate)
 		)
 	}
 	/**
@@ -994,7 +1033,7 @@ impl Element {
 		for book in library.root_element().search_elements_by_name(
 			"book"
 		){
-			println!("{}", book.text());
+			println!("{}", book.text().expect("no title"));
 		}
 		Ok(())
 	}
@@ -1009,7 +1048,7 @@ impl Element {
 	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Text> + '_> where P: Fn(&&Text) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.search_elements(|n| n.is_text())
+			self.search(|n| n.is_text())
 			.map(|n| n.as_text().expect("logic error"))
 			.filter(predicate)
 		)
@@ -1019,7 +1058,7 @@ impl Element {
 	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Comment> + '_> where P: Fn(&&Comment) -> bool + 'a {
 		// recursive
 		Box::new(
-			self.search_elements(|n| n.is_comment())
+			self.search(|n| n.is_comment())
 				.map(|n| n.as_comment().expect("logic error"))
 				.filter(predicate)
 		)
@@ -1049,23 +1088,30 @@ impl Element {
 		// Note: if this is an element, set the namespace context
 		self.append_boxed(node.boxed());
 	}
-	/** same as `.append(...)` but for a Box<dyn Node> */
-	pub fn append_boxed(&mut self, node: Box<dyn Node>) {
-		let is_element = node.is_element();
+	/** same as [append(...)](Element::append()) but for a Box&lt;dyn Node&gt; */
+	pub fn append_boxed(&mut self, mut node: Box<dyn Node>) {
+		Self::apply_xmlns_context_to_child_node(self.default_namespace(), self.xmlns_context.clone(), &mut node);
 		self.child_nodes.push(node);
-		if is_element {
-			let df_xmlns = self.default_namespace().clone();
-			let xmlns_context = self.get_namespace_context().clone();
-			// update xmlns prefix context if we just added an element
-			self.child_nodes.last_mut().expect("logic error")
-				.as_element_mut().expect("logic error")
-				.set_namespace_context(
-					df_xmlns,
-					xmlns_context
-				);
-		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
+	}
+	/** Applies this element's context to the given child */
+	fn apply_xmlns_context_to_child_node(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, node: &mut Box<dyn Node>) {
+		let is_element = node.is_element();
+		if is_element {
+			Self::apply_xmlns_context_to_child_element(
+				df_xmlns, xmlns_context,
+				node.as_element_mut().expect("logic error")
+			);
+		}
+	}
+	/** Applies the default xmlns and prefixed xmlns context to the given child */
+	fn apply_xmlns_context_to_child_element(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, child: &mut Element) {
+		// update xmlns prefix context if we just added an element
+		child.set_namespace_context(
+			df_xmlns,
+			Some(xmlns_context)
+		);
 	}
 	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {
@@ -1108,8 +1154,8 @@ impl Element {
 		use kiss_xml::dom::*;
 		let mut doc = Document::new(Element::new_from_name("album")?);
 		doc.root_element_mut().append_all(vec![
-			Element::new_with_text("song", "I Believe I Can Fly").boxed(),
-			Element::new_with_text("song", "My Heart Will Go On").boxed(),
+			Element::new_with_text("song", "I Believe I Can Fly")?.boxed(),
+			Element::new_with_text("song", "My Heart Will Go On")?.boxed(),
 			Comment::new("album list incomplete").boxed(),
 		]);
 		println!("{}", doc);
@@ -1137,15 +1183,11 @@ impl Element {
 			i += 1;
 		}
 		// then apply the xmlns context to the elements
-		let df_xmlns = self.default_namespace().clone();
-		let xmlns_context = self.get_namespace_context().clone();
 		for i in elem_indices {
-			self.child_nodes[i]
-				.as_element_mut().expect("logic error (bad index)")
-				.set_namespace_context(
-					df_xmlns.clone(),
-					xmlns_context.clone()
-				)
+			Self::apply_xmlns_context_to_child_node(
+				self.default_namespace(), self.xmlns_context.clone(),
+			&mut self.child_nodes[i]
+			);
 		}
 		// clean-up text nodes
 		self.cleanup_text_nodes();
@@ -1158,19 +1200,11 @@ impl Element {
 			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
 		}
 		// Note: if this is an element, set the namespace context
-		let is_element = node.is_element();
 		self.child_nodes.insert(index, node.boxed());
-		if is_element {
-			let df_xmlns = self.default_namespace().clone();
-			let xmlns_context = self.get_namespace_context().clone();
-			// update xmlns prefix context if we just added an element
-			self.child_nodes.get_mut(index).expect("logic error")
-				.as_element_mut().expect("logic error")
-				.set_namespace_context(
-					df_xmlns,
-					xmlns_context
-				);
-		}
+		Self::apply_xmlns_context_to_child_node(
+			self.default_namespace(), self.xmlns_context.clone(),
+			self.child_nodes.last_mut().unwrap()
+		);
 		// clean-up text nodes
 		self.cleanup_text_nodes();
 		// done
@@ -1185,11 +1219,53 @@ impl Element {
 		}
 		Ok(self.child_nodes.remove(index))
 	}
-	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive). */
-	pub fn remove_all<P>(&mut self, predicate: P) -> usize where P: Fn(&dyn Node) -> bool {
+	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
+
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use [remove_by(...)](remove_by()) instead.
+
+	# Example:
+	```rust
+	fn main() -> Result<(),kiss_xml::errors::KissXmlError> {
+		use kiss_xml;
+		let xml = r#"
+		<list>
+			<task>Go to work</task>
+			<work>Web development</work>
+			<task>Do homework</task>
+			<task>Party!</task>
+		</list>
+		"#;
+		let mut dom = kiss_xml::parse_str(xml)?;
+		dom.root_element_mut().remove_all(
+			&|n| n.text().unwrap_or(String::new()).contains("work")
+		);
+		println!("Fun list:\n{}", dom);
+		// prints:
+		// Fun list:
+		// <list>
+		//   <work>Web development</work>
+		//   <task>Party!</task>
+		// </list>
+		Ok(())
+	}
+	```
+	 */
+	pub fn remove_all<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
+		let mut count =  self.remove_by(predicate);
+		for e in self.child_elements_mut() {
+			count += e.remove_all(predicate);
+		}
+		return count;
+	}
+
+	/** Removes all child nodes matching the given predicate function, returning the number of removed nodes (non-recursive).
+
+	This function is not recursive. For recursive removal, use [remove_all(...)](remove_all()) instead.
+	 */
+	pub fn remove_by<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
-			if predicate(self.child_nodes[i].as_ref()) {
+			if predicate(&self.child_nodes[i]) {
 				rm_indices.push(i);
 			}
 		}
@@ -1215,7 +1291,7 @@ impl Element {
 	}
 	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
-	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use [remove_all_elements(...)](remove_all_elements()) instead. */
 	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
@@ -1233,9 +1309,27 @@ impl Element {
 		}
 		return count;
 	}
+
+	/** Recursively removes all child nodes matching the given predicate function, returning the number of removed nodes.
+
+	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use [remove_by(...)](remove_by()) instead.
+	 */
+	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
+		let new_pred = |n: &Box<dyn Node>| {
+			match n.is_element(){
+				true => predicate(n.as_element().unwrap()),
+				false => false
+			}
+		};
+		let mut count =  self.remove_by(&new_pred);
+		for e in self.child_elements_mut() {
+			count += e.remove_all(&new_pred);
+		}
+		return count;
+	}
 	/** Removes all child elements matching the given element name (regardless of namespace), returning the number of removed elements.
 
-	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use `remove_all_elements(...)` instead. */
+	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use [remove_all_elements(...)](remove_all_elements()) instead. */
 	pub fn remove_elements_by_name(&mut self, name: impl Into<String>) -> usize {
 		let n: String = name.into();
 		self.remove_elements(move |e| e.name == n)
@@ -1250,7 +1344,8 @@ impl Element {
 		out.push_str(tag_name.as_str());
 
 		// attributes
-		let attrs = self.attributes();
+		let mut attrs: Vec<(&String, &String)> = self.attributes().iter().map(|kv| (kv.0, kv.1)).collect();
+		attrs.sort_by(crate::attribute_order);  // ensure consistent and predictable attribute ordering
 		for (k, v) in attrs {
 			out.push_str(" ");
 			out.push_str(k.as_str());
@@ -1267,7 +1362,7 @@ impl Element {
 			out.push_str(">");
 			out.push_str(&self.child_nodes[0].to_string_with_indent(indent));
 			out.push_str("</");
-			out.push_str(self.name().as_str());
+			out.push_str(tag_name.as_str());
 			out.push_str(">");
 		} else {
 			// multiple children, prettify
@@ -1360,7 +1455,13 @@ impl Node for Element {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, indent: &str) -> String {
-		self.to_string_with_prefix_and_indent("", indent)
+		match crate::validate_indent(indent){
+			Ok(_) => self.to_string_with_prefix_and_indent("", indent),
+			Err(_) => {
+				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				self.to_string_with_prefix_and_indent("", "  ")
+			}
+		}
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1393,7 +1494,7 @@ impl Default for Element {
 			attributes: Default::default(),
 			xmlns: None,
 			xmlns_prefix: None,
-			xmlns_context: None,
+			xmlns_context: HashMap::new(),
 		}
 	}
 }
@@ -1700,13 +1801,13 @@ impl Default for Declaration {
 
 impl std::fmt::Display for Declaration {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.decl_str)
+		write!(f, "<?{}?>", self.decl_str)
 	}
 }
 
 impl std::fmt::Debug for Declaration {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.decl_str)
+		write!(f, "<?{}?>", self.decl_str)
 	}
 }
 
