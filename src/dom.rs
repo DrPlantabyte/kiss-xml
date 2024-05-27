@@ -8,7 +8,7 @@ A document object model (DOM) is a tree data structure with three different kind
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::Element;
-	let mut doc = kiss_xml::parse_filepath("some-file.xml")?;
+	let mut doc = kiss_xml::parse_filepath("tests/some-file.xml")?;
 	doc.root_element_mut().append(Element::new_with_text("note", "note text")?);
 	println!("{}", doc.to_string_with_indent("\t"));
 	Ok(())

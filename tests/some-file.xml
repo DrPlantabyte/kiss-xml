@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <books>
+        <!-- books are organized by continent -->
+        <american>
+            <book genre="fantasy" count="2">The Wizard of Oz</book>
+            <book genre="sci-fi" count="3">Dune</book>
+        </american>
+        <asian>
+            <book genre="fantasy" count="1">Journey to the West</book>
+        </asian>
+        <european>
+            <book genre="fantasy" count="0">The Lord of the Rings</book>
+            <book genre="sci-fi" count="42">The Hitchhiker's Guide to the Galaxy</book>
+        </european>
+    </books>
+</root>

@@ -16,5 +16,4 @@
 cobertura.xml
 
 # random stuff
-*.xml
 tests/politics.xml

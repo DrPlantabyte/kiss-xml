@@ -35,7 +35,7 @@ To parse an XML file, all you need to do is call the `kiss_xml::parse_filepath(.
 
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
-	let doc = kiss_xml::parse_filepath("tests/my-file.xml")?;
+	let doc = kiss_xml::parse_filepath("tests/some-file.xml")?;
 	println!("{}", doc.to_string());
 	Ok(())
 }
@@ -57,7 +57,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 		<property name="volume" value="11" />
 		<property name="mixer" value="standard" />
 	</sound>
-<config>
+</config>
 "#;
 	// parse XML to a document object model (DOM)
 	let dom = kiss_xml::parse_str(xml)?;
@@ -122,7 +122,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use std::collections::HashMap;
 	let mut doc = kiss_xml::parse_str(
 r#"<html>
-	<!-- this is a comment ->
+	<!-- this is a comment -->
 	<body>
 		Content goes here
 	</body>
