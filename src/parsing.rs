@@ -32,7 +32,6 @@ impl ParseTree {
 	}
 	/// push a new element to the stack
 	pub fn push(&mut self, new_element: Element) {
-		println!("pushing: <{}>", new_element.tag_name());
 		if self.pos.is_none() {
 			self.data.insert(0, ParseTreeNode{
 				id: 0,
@@ -61,8 +60,6 @@ impl ParseTree {
 			return Err(ParsingError::new("closing tag without corresponding open tag").into());
 		}
 		let pos = self.pos.unwrap();
-		println!("popping: <{}>", self.data
-			.get(&pos).expect("logic error").value.as_element().unwrap().tag_name());
 		let new_pos = self.data
 			.get(&pos).expect("logic error").parent_id;
 		self.pos = new_pos;
@@ -70,7 +67,6 @@ impl ParseTree {
 	}
 	/// append a node to the top element on the stack (without adding the new node to the stack)
 	pub fn append(&mut self, n: impl Node + 'static) -> Result<(), KissXmlError> {
-		println!("appending: {:?}", n);
 		if self.pos.is_none() {
 			return Err(ParsingError::new("no root element").into());
 		}

@@ -403,7 +403,6 @@ impl Element {
 				}
 			};
 		}
-		println!("new <{}> xlmns = {:?}", name, xmlns);
 		// set the XML NS from the attributes and provided args
 		let mut elem = Self {
 			name: name,
@@ -761,7 +760,6 @@ impl Element {
 				None => {}
 				Some(prefix) => {
 					// get prefix namespace from context
-					println!("getting namespace from context for prefix {prefix}");
 					self.xmlns = self.xmlns_context.get(prefix).map(String::clone);
 				}
 			};
