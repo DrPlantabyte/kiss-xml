@@ -247,6 +247,11 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	fn is_comment(&self) -> bool;
 
 	/**
+	Returns `true` if this Node trait object is a CData struct, otherwise `false`
+	 */
+	fn is_cdata(&self) -> bool;
+
+	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_element(&self) -> Result<&Element, TypeCastError>;
@@ -262,6 +267,11 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	fn as_text(&self) -> Result<&Text, TypeCastError>;
 
 	/**
+	Casts this Node to a CData struct (if the Node is not an CData struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn as_cdata(&self) -> Result<&CData, TypeCastError>;
+
+	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError>;
@@ -275,6 +285,11 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError>;
+
+	/**
+	Casts this Node to a CData struct (if the Node is not an CData struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError>;
 
 	/**
 	Casts this struct to a Node trait object
@@ -1434,17 +1449,25 @@ impl Node for Element {
 		false
 	}
 
+	fn is_cdata(&self) -> bool {
+		false
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1604,17 +1627,29 @@ impl Node for Text {
 		false
 	}
 
+	fn is_cdata(&self) -> bool {
+		todo!()
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {
+		todo!()
+	}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Ok(self)}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {
+		todo!()
+	}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1697,17 +1732,25 @@ impl Node for Comment {
 		true
 	}
 
+	fn is_cdata(&self) -> bool {
+		false
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Ok(self)}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1767,6 +1810,119 @@ impl std::fmt::Debug for Comment {
 		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
+
+/** This struct represents a CData element. CData is text data that should be preserved as-is without escaping or whitespace modification. CData is *not* binary data (though some non-standard uses of XML may store binary data in a CData tag) */
+#[derive(Clone)]
+pub struct CData{
+	/// The content of the cdata
+	pub content: String
+}
+
+impl CData {
+	/// Constructs a new CData node from the given string-like object
+	pub fn new(cdata: impl Into<String>) -> Self {
+		let content: String = cdata.into();
+		Self{content}
+	}
+}
+
+impl Node for CData {
+
+	fn text(&self) -> Option<String> {
+		Some(self.content.clone())
+	}
+
+	fn is_element(&self) -> bool {
+		false
+	}
+
+	fn is_text(&self) -> bool {
+		false
+	}
+
+	fn is_comment(&self) -> bool {
+		false
+	}
+
+	fn is_cdata(&self) -> bool {
+		true
+	}
+
+	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+
+	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Ok(&self)}
+
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Ok(self)}
+
+	fn as_node(&self) -> &dyn Node {self}
+
+	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
+	fn as_any(&self) -> &dyn Any {self}
+
+	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+
+	fn to_string_with_indent(&self, _indent: &str) -> String {
+		format!("<![CDATA[{}]]>", self.content)
+	}
+
+	fn boxed(self) -> Box<dyn Node> {
+		Box::new(self)
+	}
+}
+
+impl From<&str> for CData {
+	fn from(value: &str) -> Self {
+		CData::new(value)
+	}
+}
+
+impl From<String> for CData {
+	fn from(value: String) -> Self {
+		CData::new(value)
+	}
+}
+
+impl PartialOrd for CData {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		self.content.partial_cmp(&other.content)
+	}
+}
+
+impl PartialEq<Self> for CData {
+	fn eq(&self, other: &Self) -> bool {
+		self.content.eq(&other.content)
+	}
+}
+
+impl Hash for CData {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.content.hash(state)
+	}
+}
+
+impl std::fmt::Display for CData {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.to_string_with_indent("  "))
+	}
+}
+
+impl std::fmt::Debug for CData {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.to_string_with_indent("  "))
+	}
+}
+
 
 /** An XML document declaration, ie `<?xml version="1.0" encoding="UTF-8"?>`
 
