@@ -15,11 +15,11 @@ KISS-XML provides the basics for XML documents, including:
 * XML elements, text, and comments
 * DOM is mutable and can be saved as a string and to files
 * XML namespaces (with and without prefixes)
+* CDATA
 * Easy to use
 
 ## What's NOT included:
 * Schema handling
-* CDATA
 * Document type declarations (DTDs will be preserved but not interpreted)
 * Parsing character encodings other than UTF-8
 * Typed XML data (eg integer attribute values)
