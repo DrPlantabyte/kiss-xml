@@ -153,8 +153,8 @@ fn test_dom_parsing() {
 	assert_eq!(root.search_elements_by_name("b").collect::<Vec<_>>().first().unwrap().text().unwrap(), "me", "Did not find text for <b> in recursive search");
 	assert_eq!(root.search_elements(|e| e.name() == "b").count(), 1, "Did not find <b> in recursive search");
 	assert_eq!(root.search_text(|s| s.text().unwrap().contains("weekend")).map(|s| s.text().unwrap()).collect::<Vec<String>>().first().unwrap().as_str(), " this weekend!", "Did not find ' this weekend!' in recursive text search");
-	assert_eq!(root.search_comments(|c| c.content.contains("Note:")).count(), 1, "Did not find comment in recursive search");
-	assert_eq!(root.search_comments(|c| c.content.contains("this does not exist")).count(), 0, "Found non-existent comment in recursive search");
+	assert_eq!(root.search_comments(|c| c.get_content().contains("Note:")).count(), 1, "Did not find comment in recursive search");
+	assert_eq!(root.search_comments(|c| c.get_content().contains("this does not exist")).count(), 0, "Found non-existent comment in recursive search");
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_modify_dom() {
 		])).unwrap()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
-		.insert(1, Comment::new("inserted comment")).unwrap();
+		.insert(1, Comment::new("inserted comment").unwrap()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
 		.append(Text::new("inserted text"));
@@ -417,7 +417,7 @@ r#"<html>
 	doc.root_element_mut().first_element_by_name_mut("body").unwrap().append_all(
 		vec![
 			Element::new_with_text("h1", "Chapter 1").unwrap().boxed(),
-			Comment::new("Note: there is only one chapter").boxed(),
+			Comment::new("Note: there is only one chapter").unwrap().boxed(),
 			Element::new_with_children("p", vec![
 				Text::new("Once upon a time, there was a little ").boxed(),
 				Element::new_with_attributes_and_text(
