@@ -35,6 +35,7 @@ To parse an XML file, all you need to do is call the `kiss_xml::parse_filepath(.
 
 ```rust
 fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
+	use kiss_xml;
 	let doc = kiss_xml::parse_filepath("tests/some-file.xml")?;
 	println!("{}", doc.to_string());
 	Ok(())
@@ -102,9 +103,9 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	// remove element by index
 	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
-	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text().or(Some(String::new())).unwrap() == "Jimmy John");
+	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text() == "Jimmy John");
 	// print first element content
-	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text().expect("no text"));
+	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text());
 	// write to file
 	doc.write_to_filepath("tests/politics.xml");
 	Ok(())
@@ -134,7 +135,7 @@ r#"<html>
 		.collect::<Vec<_>>();
 	let first_comment = comments.first()
 		.ok_or(DoesNotExistError::new("no comments in DOM"))?;
-	println!("Comment: {}", first_comment.text().unwrap());
+	println!("Comment: {}", first_comment.text());
 	doc.root_element_mut().remove_all(&|n| n.is_comment());
 	// replace content of <body> with some HTML
 	doc.root_element_mut().first_element_by_name_mut("body")?.remove_all(&|_| true);
@@ -155,6 +156,18 @@ r#"<html>
 	);
 	// print the results
 	println!("{}", doc.to_string());
+	// prints:
+	// <html>
+	//   <body>
+	//     <h1>Chapter 1</h1>
+	//     <!--Note: there is only one chapter-->
+	//     <p>
+	//       Once upon a time, there was a little
+	//       <a href="https://en.wikipedia.org/wiki/Gnome">gnome</a>
+	//        who lived in a walnut tree...
+	//     </p>
+	//   </body>
+	// </html>
 	Ok(())
 }
 ```
@@ -180,7 +193,7 @@ mod parsing;
 
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
-/// into XML-compatible text, eg replacing "&" with "&amp;" and "<" with "&lt;"
+/// into XML-compatible text, eg replacing "&" with "&amp;amp;" and "<" with "&amp;lt;"
 pub fn text_escape(text: impl Into<String>) -> String {
 	let buffer: String = text.into();
 	buffer.replace("&", "&amp;")
@@ -189,13 +202,13 @@ pub fn text_escape(text: impl Into<String>) -> String {
 }
 
 /// Escapes a subset of XML reserved characters (&, ', and ") in an attribute
-/// into XML-compatible text, eg replacing "&" with "&amp;" and "'" with "&apos;"
+/// into XML-compatible text, eg replacing "&" with "&amp;amp;" and "'" with "&amp;apos;"
 pub fn attribute_escape(text: impl Into<String>) -> String {
 	escape(text)
 }
 
 /// Escapes all special characters (&, <, >, ', and ") in a string into an
-/// XML-compatible string, eg replacing "&" with "&amp;" and "<" with "&lt;"
+/// XML-compatible string, eg replacing "&" with "&amp;amp;" and "<" with "&amp;lt;"
 pub fn escape(text: impl Into<String>) -> String {
 	let buffer: String = text.into();
 	buffer.replace("&", "&amp;")
@@ -206,7 +219,7 @@ pub fn escape(text: impl Into<String>) -> String {
 }
 
 /// Reverses any escaped characters (&, <, >, ', and ") in XML-compatible text
-/// to regenerate the original text, eg replacing "&amp;" with "&" and "&lt;"
+/// to regenerate the original text, eg replacing "&amp;amp;" with "&" and "&amp;lt;"
 /// with "<"
 pub fn unescape(text: impl Into<String>) -> String {
 	let mut buffer: String = text.into();
@@ -219,7 +232,9 @@ pub fn unescape(text: impl Into<String>) -> String {
 				let i = i+last_i;
 				let start = i;
 				let slice = (&buffer[i..]).to_string();
+				let mut char_size: usize = 1;
 				for (j, k) in slice.char_indices() {
+					char_size = k.len_utf8();
 					if k == ';' {
 						let end = i + j + 1;
 						let slice = &slice[..j];
@@ -244,7 +259,9 @@ pub fn unescape(text: impl Into<String>) -> String {
 								Ok(codepoint) => {
 									match char::from_u32(codepoint) {
 										Some(unicode) => {
-											string_insert(&mut buffer, (start, end), unicode.to_string().as_str());
+											let unicode_str = unicode.to_string();
+											string_insert(&mut buffer, (start, end), unicode_str.as_str());
+											char_size = unicode.len_utf8();
 										},
 										None => { /* do nothing */ }
 									}
@@ -254,14 +271,14 @@ pub fn unescape(text: impl Into<String>) -> String {
 						}
 					}
 				}
-				last_i = i+1;
+				last_i = i+char_size;
 			}
 		}
 	}
 	buffer
 }
 
-/// comperator for ordering attributes
+/// comparator for ordering attributes
 pub(crate) fn attribute_order(kv_tup1: &(&String, &String), kv_tup2: &(&String, &String)) -> Ordering {
 	// sort xmlns before rest
 	let a = kv_tup1.0.as_str();
@@ -409,6 +426,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		}
 		// get text since last tag
 		let text = &buffer[last_span.1 .. tag_span.0];
+
 		// if text is not empty, add text node
 		match real_text(text) {
 			None => {},
@@ -739,9 +757,7 @@ fn nested_quote_aware_find_close(text: &str, from: usize) -> Option<usize> {
 
 /// singleton regex matcher
 const IS_BLANK_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
-/// singleton regex matcher
-const INDENTED_LINE_MATCHER_SINGLETON: OnceCell<Regex> = OnceCell::new();
-/// extracts the actual text (accounting for indenting) from a string slice,
+/// extracts the actual text from a string slice,
 /// returning None if it is all whitespace
 fn real_text(text: &str) -> Option<String> {
 	// check for empty string
@@ -751,39 +767,6 @@ fn real_text(text: &str) -> Option<String> {
 		return None;
 	}
 	// extract actual text
-	let singleton = INDENTED_LINE_MATCHER_SINGLETON;
-	let matcher = singleton.get_or_init(|| Regex::new(r#"\n\s*"#).unwrap());
-	let mut text = matcher.replace(text, "\n").to_string();
-	// trim multi-line text:
-	// remove leading \n and following spaces and tabs
-	if text.starts_with("\n") || text.starts_with("\r\n") {
-		text = text.trim_start_matches("\r")
-			.trim_start_matches("\n")
-			.trim_start_matches(" ")
-			.trim_start_matches("\t").to_string();
-	}
-	// remove trailing \n and following spaces and tabs
-	let last_non_ws_index = text.char_indices()
-		.filter(|(_i, c)| !c.is_whitespace())
-		.map(|(i, _c)| i).last();
-	match last_non_ws_index{
-		None => {}  // empty string
-		Some(index) => {
-			// get next char
-			match text.get(index+1..index+2){
-				None => {}  // next char is multi-byte
-				Some(c) => {
-					if c == "\n" {
-						// ends in \n followed by whitespace, trim back to \n
-						text = text.trim_end_matches("\t")
-							.trim_end_matches(" ")
-							.trim_end_matches("\n")
-							.trim_end_matches("\r").to_string();
-					}
-				}
-			};
-		}
-	};
 	Some(unescape(text))
 }
 

@@ -22,7 +22,7 @@ KISS-XML provides the basics for XML documents, including:
 * Typed XML data (eg integer attribute values)
 * Performance optimizations (prioritizing easy-to-use over fast)
 
-If you need any of the above XML features, then this library is too simple for
+If you need any of the above excluded XML features, then this library is too simple for
 your needs. Try another XML parsing crate instead.
 
 ## Quickstart Guide
@@ -35,9 +35,11 @@ Then to parse an XML file, all you need to do is call the
 `kiss_xml::parse_filepath(...)` function, like this:
 
 ```rust
-fn main() {
-	let doc = kiss_xml::parse_filepath("my-file.xml").unwrap();
-    println!("{}", doc.to_string());
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
+	use kiss_xml;
+	let doc = kiss_xml::parse_filepath("some-file.xml")?;
+	println!("{}", doc.to_string());
+	Ok(())
 }
 ```
 
@@ -45,13 +47,15 @@ The XML content will be converted into a Document Object Model (DOM) with a
 single root element. A DOM is a tree-like data structure made up of XML Element,
 Text, and Comment nodes. You can explore the DOM element-by-element with the
 `.elements_by_name(&str)` and `.first_element_by_name(&str)` methods, scan the
-children of an element with the `.child_*()` methods, or do a recursive search
+children of an element with the `.children()` and `.child_elements()` methods, or do a recursive search
 using the `.search(...)` and `.search_*(...)` methods.
 
 For example:
 ```rust
-fn main() {
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
+	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<name>My Settings</name>
@@ -59,19 +63,19 @@ fn main() {
 		<property name="volume" value="11" />
 		<property name="mixer" value="standard" />
 	</sound>
-<config>
+</config>
 "#;
 	// parse XML to a document object model (DOM)
-	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");
+	let dom = kiss_xml::parse_str(xml)?;
 	// print all sound properties
 	let properties = dom.root_element()
-		.first_element_by_name("sound").expect("No <sound> element")
+		.first_element_by_name("sound")?
 		.elements_by_name("property");
 	for prop in properties {
 		println!(
 			"{} = {}",
-			prop.get_attr("name").expect("missing name attribute"),
-			prop.get_attr("value").expect("missing value attribute")
+			prop.get_attr("name").ok_or(DoesNotExistError::default())?,
+			prop.get_attr("value").ok_or(DoesNotExistError::default())?
 		);
 	}
 	// print children of the root element
@@ -82,6 +86,7 @@ fn main() {
 	for e in dom.root_element().search_elements(|_| true) {
 		println!("found element <{}>", e.name())
 	}
+	Ok(())
 }
 ```
 
@@ -91,18 +96,25 @@ method or write it to a file with `.write_to_filepath(...)`.
 
 For example:
 ```rust
-fn main() {
+fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use kiss_xml;
 	use kiss_xml::dom::*;
+	use kiss_xml::errors::*;
 	// make a DOM from scratch
-	let mut doc = Document::new(Element::new("politicians"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Bob Dole"));
-	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John"));
+	let mut doc = Document::new(Element::new_from_name("politicians")?);
+	doc.root_element_mut().insert(0, Element::new_with_text("person", "John Adams")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Hillary Clinton")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Jimmy John")?);
+	doc.root_element_mut().append(Element::new_with_text("person", "Nanny No-Name")?);
+	// remove element by index
+	let _removed_element = doc.root_element_mut().remove_element(3)?;
 	// remove element(s) by use of a predicate function
-	doc.root_element_mut().remove_elements(|e| e.text().unwrap() == "Jimmy John");
+	let _num_removed = doc.root_element_mut().remove_elements(|e| e.text() == "Jimmy John");
+	// print first element content
+	println!("First politician: {}", doc.root_element().first_element_by_name("person")?.text());
 	// write to file
-	doc.write_to_filepath("politics.xml");
+	doc.write_to_filepath("tests/politics.xml");
+	Ok(())
 }
 ```
 

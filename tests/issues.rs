@@ -31,6 +31,7 @@ See https://github.com/DrPlantabyte/kiss-xml/issues/17
 #[test]
 fn test_issue_17_parse() {
 	use kiss_xml;
+	use kiss_xml::dom::Node;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>
 	<!--comment-->
@@ -45,7 +46,7 @@ fn test_issue_17_parse() {
 	let cdata_node = mydata_elem.children().next().unwrap();
 	assert!(cdata_node.is_cdata(), "<![CDATA[...]]> not parsed as CDATA");
 	assert_eq!(
-		cdata_node.as_cdata().unwrap().get_content(),
+		cdata_node.as_cdata().unwrap().text(),
 		"<html><body>This is not<br>XML</body></html>",
 		"test failed for issue 17: https://github.com/DrPlantabyte/kiss-xml/issues/17"
 	);
