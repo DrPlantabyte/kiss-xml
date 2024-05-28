@@ -10,7 +10,7 @@ fn test_strings() -> Result<(), Box<dyn Error>> {
 		"tree", "bark!"
 	)?;
 	eprintln!("{}", e1);
-	let c1 = Comment::new("no comment");
+	let c1 = Comment::new("no comment")?;
 	eprintln!("{}", c1);
 	let t1 = Text::new("bark! bark!");
 	eprintln!("{}", t1);

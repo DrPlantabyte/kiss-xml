@@ -23,7 +23,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use chrono::{DateTime, Utc};
 	let mut doc = Document::new(
 		Element::new_with_children("root", vec![
-			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339())).boxed(),
+			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339()))?.boxed(),
 			Element::new_with_text("motd", "Message of the day is: hello!")?.boxed()
 		])?
 	);
@@ -1171,7 +1171,7 @@ impl Element {
 		doc.root_element_mut().append_all(vec![
 			Element::new_with_text("song", "I Believe I Can Fly")?.boxed(),
 			Element::new_with_text("song", "My Heart Will Go On")?.boxed(),
-			Comment::new("album list incomplete").boxed(),
+			Comment::new("album list incomplete")?.boxed(),
 		]);
 		println!("{}", doc);
 		/* prints:
@@ -1703,21 +1703,40 @@ impl std::fmt::Debug for Text {
 #[derive(Clone)]
 pub struct Comment{
 	/// The text of the comment
-	pub content: String
+	comment: String
 }
 
 impl Comment {
 	/// Constructs a new Comment node from the given string-like object
-	pub fn new(comment: impl Into<String>) -> Self {
+	pub fn new(comment: impl Into<String>) -> Result<Self, InvalidContent> {
 		let content: String = comment.into();
-		Self{content}
+		if content.contains("-->") {
+			Err(InvalidContent::new("Comments cannot contain '-->'"))
+		} else {
+			Ok(Self { comment: content })
+		}
+	}
+
+	/// Gets the content of this comment
+	pub fn get_content(&self) -> &str {
+		self.comment.as_str()
+	}
+	/// Sets the content of this comment
+	pub fn set_content(&mut self, content: impl Into<String>) -> Result<(), InvalidContent> {
+		let content = content.into();
+		if content.contains("-->") {
+			Err(InvalidContent::new("Comments cannot contain '-->'"))
+		} else {
+			self.comment = content.into();
+			Ok(())
+		}
 	}
 }
 
 impl Node for Comment {
 
 	fn text(&self) -> Option<String> {
-		Some(self.content.clone())
+		Some(self.comment.clone())
 	}
 
 	fn is_element(&self) -> bool {
@@ -1761,7 +1780,7 @@ impl Node for Comment {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
-		format!("<!--{}-->", self.content)
+		format!("<!--{}-->", self.comment)
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1771,31 +1790,31 @@ impl Node for Comment {
 
 impl From<&str> for Comment {
 	fn from(value: &str) -> Self {
-		Comment::new(value)
+		Comment::new(value).unwrap()
 	}
 }
 
 impl From<String> for Comment {
 	fn from(value: String) -> Self {
-		Comment::new(value)
+		Comment::new(value).unwrap()
 	}
 }
 
 impl PartialOrd for Comment {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.content.partial_cmp(&other.content)
+		self.comment.partial_cmp(&other.comment)
 	}
 }
 
 impl PartialEq<Self> for Comment {
 	fn eq(&self, other: &Self) -> bool {
-		self.content.eq(&other.content)
+		self.comment.eq(&other.comment)
 	}
 }
 
 impl Hash for Comment {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.content.hash(state)
+		self.comment.hash(state)
 	}
 }
 
@@ -1815,21 +1834,40 @@ impl std::fmt::Debug for Comment {
 #[derive(Clone)]
 pub struct CData{
 	/// The content of the cdata
-	pub content: String
+	cdata: String
 }
 
 impl CData {
 	/// Constructs a new CData node from the given string-like object
-	pub fn new(cdata: impl Into<String>) -> Self {
+	pub fn new(cdata: impl Into<String>) -> Result<Self, InvalidContent> {
 		let content: String = cdata.into();
-		Self{content}
+		if content.contains("]]>") {
+			Err(InvalidContent::new("CDATA cannot contain ']]>' as content"))
+		} else {
+			Ok(Self { cdata: content })
+		}
+	}
+
+	/// Gets the content of this CDATA
+	pub fn get_content(&self) -> &str {
+		self.cdata.as_str()
+	}
+	/// Sets the content of this CDATA
+	pub fn set_content(&mut self, content: impl Into<String>) -> Result<(), InvalidContent> {
+		let content = content.into();
+		if content.contains("]]>") {
+			Err(InvalidContent::new("CDATA cannot contain ']]>'"))
+		} else {
+			self.cdata = content.into();
+			Ok(())
+		}
 	}
 }
 
 impl Node for CData {
 
 	fn text(&self) -> Option<String> {
-		Some(self.content.clone())
+		Some(self.cdata.clone())
 	}
 
 	fn is_element(&self) -> bool {
@@ -1873,7 +1911,7 @@ impl Node for CData {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
-		format!("<![CDATA[{}]]>", self.content)
+		format!("<![CDATA[{}]]>", self.cdata)
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1883,31 +1921,31 @@ impl Node for CData {
 
 impl From<&str> for CData {
 	fn from(value: &str) -> Self {
-		CData::new(value)
+		CData::new(value).unwrap()
 	}
 }
 
 impl From<String> for CData {
 	fn from(value: String) -> Self {
-		CData::new(value)
+		CData::new(value).unwrap()
 	}
 }
 
 impl PartialOrd for CData {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.content.partial_cmp(&other.content)
+		self.cdata.partial_cmp(&other.cdata)
 	}
 }
 
 impl PartialEq<Self> for CData {
 	fn eq(&self, other: &Self) -> bool {
-		self.content.eq(&other.content)
+		self.cdata.eq(&other.cdata)
 	}
 }
 
 impl Hash for CData {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.content.hash(state)
+		self.cdata.hash(state)
 	}
 }
 

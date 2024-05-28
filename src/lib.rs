@@ -141,7 +141,7 @@ r#"<html>
 	doc.root_element_mut().first_element_by_name_mut("body")?.append_all(
 		vec![
 			Element::new_with_text("h1", "Chapter 1")?.boxed(),
-			Comment::new("Note: there is only one chapter").boxed(),
+			Comment::new("Note: there is only one chapter")?.boxed(),
 			Element::new_with_children("p", vec![
 				Text::new("Once upon a time, there was a little ").boxed(),
 				Element::new_with_attributes_and_text::<&str,&str>(
@@ -353,9 +353,6 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			// DTD
 			let dtd = dom::DTD::from_string(slice)?;
 			dtds.push(dtd);
-		} else if slice.starts_with("<![CDATA["){
-			// CDATA
-			todo!("CData not implemented yet")
 		} else if slice.starts_with("<!"){
 			// some other XML mallarky
 			eprintln!("WARNING: Ignoring {slice} (not supported outside root element)");
@@ -429,7 +426,22 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
-			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)]))
+			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)])?)
+				.map_err(|e|{
+					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+					errors::ParsingError::new(format!(
+						"{} (syntax error on line {line}, column {col})", e
+					))
+				})?;
+		} else if slice.starts_with("<![CDATA["){
+			// CDATA
+			if !slice.ends_with("]]>") {
+				let (line, col) = line_and_column(&buffer,  next_span.0.unwrap());
+				return Err(errors::ParsingError::new(format!(
+					"Unclosed CDATA. '<![CDATA[' must be followed by ']]>' (syntax error on line {line}, column {col})"
+				)).into());
+			}
+			parse_stack.append(dom::CData::new(&slice[9 .. slice.len().saturating_sub(3)])?)
 				.map_err(|e|{
 					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
 					errors::ParsingError::new(format!(
@@ -437,7 +449,7 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 					))
 				})?;
 		} else if slice.starts_with("<!") {
-			// CDATA or other unsupported thing
+			// other unsupported thing
 			let (line, col) = line_and_column(&buffer, tag_span.0);
 			return Err(errors::NotSupportedError::new(format!(
 				"kiss-xml does not support '{}' (error on line {line}, column {col})",
