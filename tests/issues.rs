@@ -31,7 +31,6 @@ See https://github.com/DrPlantabyte/kiss-xml/issues/17
 #[test]
 fn test_issue_17_parse() {
 	use kiss_xml;
-	use kiss_xml::dom::*;
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>
 	<!--comment-->
@@ -45,8 +44,16 @@ fn test_issue_17_parse() {
 	let mydata_elem = dom.root_element().first_element_by_name("mydata").unwrap();
 	let cdata_node = mydata_elem.children().next().unwrap();
 	assert!(cdata_node.is_cdata(), "<![CDATA[...]]> not parsed as CDATA");
-	assert_eq!(cdata_node.as_cdata().unwrap().content.as_str(), xml, "XML not correctly formatted to string");
-	assert_eq!(dom.to_string_with_indent("\t").as_str(), xml, "XML not correctly formatted to string");
+	assert_eq!(
+		cdata_node.as_cdata().unwrap().get_content(),
+		"<html><body>This is not<br>XML</body></html>",
+		"test failed for issue 17: https://github.com/DrPlantabyte/kiss-xml/issues/17"
+	);
+	assert_eq!(
+		dom.to_string_with_indent("\t").as_str(),
+		xml,
+		"test failed for issue 17: https://github.com/DrPlantabyte/kiss-xml/issues/17"
+	);
 }
 
 /**
@@ -68,8 +75,8 @@ fn test_issue_17_modify() {
 </root>
 "#;
 	let mut dom = kiss_xml::parse_str(xml).unwrap();
-	let mut mydata_elem = dom.root_element_mut().first_element_by_name_mut("mydata").unwrap();
-	mydata_elem.append(CData::new("<![CDATA[<html><body>This is not<br>XML</body></html>]]>"));
+	let mydata_elem = dom.root_element_mut().first_element_by_name_mut("mydata").unwrap();
+	mydata_elem.append(CData::new("<html><body>This is not<br>XML</body></html>").unwrap());
 	assert_eq!(
 		dom.to_string_with_indent("\t").as_str(),
 		r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -81,7 +88,7 @@ fn test_issue_17_modify() {
 	<mydata><![CDATA[<html><body>This is not<br>XML</body></html>]]></mydata>
 </root>
 "#,
-		"XML not correctly formatted to string"
+		"test failed for issue 17: https://github.com/DrPlantabyte/kiss-xml/issues/17"
 	);
 }
 
