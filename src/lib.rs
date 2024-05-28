@@ -353,6 +353,9 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 			// DTD
 			let dtd = dom::DTD::from_string(slice)?;
 			dtds.push(dtd);
+		} else if slice.starts_with("<![CDATA["){
+			// CDATA
+			todo!("CData not implemented yet")
 		} else if slice.starts_with("<!"){
 			// some other XML mallarky
 			eprintln!("WARNING: Ignoring {slice} (not supported outside root element)");
