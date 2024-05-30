@@ -161,16 +161,71 @@ r#"<html>
 	//   <body>
 	//     <h1>Chapter 1</h1>
 	//     <!--Note: there is only one chapter-->
-	//     <p>
-	//       Once upon a time, there was a little
-	//       <a href="https://en.wikipedia.org/wiki/Gnome">gnome</a>
-	//        who lived in a walnut tree...
-	//     </p>
+	//     <p>Once upon a time, there was a little <a href="https://en.wikipedia.org/wiki/Gnome">gnome</a>  who lived in a walnut tree...</p>
 	//   </body>
 	// </html>
 	Ok(())
 }
 ```
+
+# Implementation Details
+
+## Indentation and Whitespace Handling
+KISS-XML always produces indented XML output and disregards the whitespace characters between tags. **However**, there is an exception to this rule: If an XML element contains text, then whitespace will be all preserved on parse and indentation will be disabled when serialized to an XML string.
+
+For example, consider this code snippet:
+```rust
+fn ws_example_1() -> Result<(), Box<dyn std::error::Error>> {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	let mut tree = Element::new_with_children(
+		"tree", vec![Element::new_with_text("speak", "bark!")?.boxed()]
+	)?;
+	tree.append(Element::new_from_name("branch")?);
+	println!("{tree}");
+	Ok(())
+}
+```
+
+The above code will print the following:
+```text
+<tree>
+  <speak>bark!</speak>
+  <branch/>
+</tree>
+```
+
+However, if you then add a text node to the "tree" element, then the output formatting will change significantly:
+```rust
+fn ws_example_2() -> Result<(), Box<dyn std::error::Error>> {
+	use kiss_xml;
+	use kiss_xml::dom::*;
+	let mut tree = Element::new_with_children(
+		"tree", vec![Element::new_with_text("speak", "bark!")?.boxed()]
+	)?;
+	tree.append(Element::new_from_name("branch")?);
+	tree.append(Text::new("I'm a tree!"));
+	println!("{tree}");
+	Ok(())
+}
+```
+
+The above code will print the following:
+```text
+<tree><speak>bark!</speak><branch/>I'm a tree!</tree>
+```
+
+Likewise, if we were to parse the following XML with KISS-XML:
+```text
+<tree>
+  <speak>bark!</speak>
+  <branch/>
+  I'm a tree!
+</tree>
+```
+You will find that the final `Text` node contains `\n··I'm·a·tree!\n` (where \n and · represent newline and space characters for clarity). Unlike HTML, KISS-XML does not collapse whitespaces.
+
+This behavior is based on a common (but not universal) interpretation of the official XML specification.
 
 # License
 This library is open source, licensed under the MIT License. You may use it

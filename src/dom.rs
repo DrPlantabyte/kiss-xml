@@ -1412,7 +1412,7 @@ impl Element {
 
 	/// Implementation of writing DOM to XML string
 	/// (inline = true to bypass pretty-printing
-	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str, inline: bool) -> String {
+	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str, mut inline: bool) -> String {
 		let mut out = String::new();
 		if !inline {out.push_str(prefix)}
 		// tag name
@@ -1444,7 +1444,6 @@ impl Element {
 		} else {
 			// multiple children, prettify
 			out.push('>');
-			if !inline{out.push('\n');}
 			/* here's where XML gets tricky and weird:
 			We want to pretty-print with indentation, BUT ONLY if said indentation would be
 			considered "insignificant" by a typical XML parser.
@@ -1454,7 +1453,8 @@ impl Element {
 			-- http://usingxml.com/Basics/XmlSpace
 			*/
 			// check if this is a mixed element
-			let mixed_element = self.child_nodes.iter().any(|n| n.is_text());
+			inline = inline || self.child_nodes.iter().any(|n| n.is_text());
+			if !inline{out.push('\n');}
 			// prettify variables
 			let mut next_prefix = String::from(prefix);
 			next_prefix.push_str(indent);
@@ -1467,11 +1467,11 @@ impl Element {
 					// child element, recurse
 					out.push_str(
 						c.as_element().expect("logic error")
-							.to_string_with_prefix_and_indent(next_prefix.as_str(), indent, inline || mixed_element).as_str()
+							.to_string_with_prefix_and_indent(next_prefix.as_str(), indent, inline).as_str()
 					);
 				} else {
 					// other
-					if !(inline || mixed_element) {out.push_str(next_prefix.as_str());}
+					if !(inline) {out.push_str(next_prefix.as_str());}
 					out.push_str(c.to_string_with_indent(indent).as_str());
 				}
 				if !inline {out.push('\n');}

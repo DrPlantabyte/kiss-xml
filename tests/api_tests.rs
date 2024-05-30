@@ -44,7 +44,7 @@ fn sample_xml_2() -> &'static str {
 <root author="some dude">
 	<!--comment-->
 	<mydata>
-		This is my data
+		<desc>This is my data</desc>
 		<properties>
 			<property name="a" value="1"/>
 			<property name="b" value="2"/>
@@ -185,13 +185,14 @@ fn test_modify_dom() {
 		.insert(1, Comment::new("inserted comment").unwrap()).unwrap();
 	doc.root_element_mut()
 		.first_element_by_name_mut("mydata").unwrap()
+		.first_element_by_name_mut("other").unwrap()
 		.append(Text::new("inserted text"));
 	let indent = "\t";
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<!--comment-->
 	<mydata>
-		This is my data
+		<desc>This is my data</desc>
 		<!--inserted comment-->
 		<properties>
 			<property name="z" value="0"/>
@@ -200,9 +201,8 @@ fn test_modify_dom() {
 			<property name="c" value="3"/>
 		</properties>
 		<meta>My metadata goes here</meta>
+		<other>inserted text</other>
 		<other/>
-		<other/>
-		inserted text
 	</mydata>
 </root>
 "#;
@@ -258,7 +258,7 @@ fn test_remove_2(){
 <root author="some dude">
 	<!--comment-->
 	<mydata>
-		This is my data
+		<desc>This is my data</desc>
 		<properties>
 			<property name="a" value="1"/>
 			<property name="b" value="2"/>
@@ -283,7 +283,7 @@ fn test_remove_3(){
 	let expected_str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
 	<mydata>
-		This is my data
+		<desc>This is my data</desc>
 		<properties/>
 		<meta>My metadata goes here</meta>
 	</mydata>
