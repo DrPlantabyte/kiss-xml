@@ -120,6 +120,17 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 
 For more details and examples, see the [documentation](https://docs.rs/kiss-xml/).
 
+## How to Contribute
+Found a bug? Want to add a new feature? Great! Here's what to do:
+
+First, create an issue on the [official KISS-XML GitHub page](https://github.com/DrPlantabyte/kiss-xml). Make sure that your issue description includes examples and use-cases.
+
+Next, create one or more unit tests that fails unless the bug-fix/feature is correctly implemented. The unit tests can be proposed in your issue description or you can fork the KISS-XML repo and add them to the file `tests/issues.rs`. Make sure all test functions start with "test_issue_##" and contain a link to the GitHub issue thread in the description.
+
+Finally, if you've implemented it yourself in a fork, create a pull request from your fork into the `staging` branch (PRs to `main` will be rejected).
+
+Thank you!
+
 ## License
 This library is open source, licensed under the MIT License. You may use it
 as-is or with modification, without any limitations.
