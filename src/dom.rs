@@ -23,7 +23,7 @@ fn main() -> Result<(), kiss_xml::errors::KissXmlError> {
 	use chrono::{DateTime, Utc};
 	let mut doc = Document::new(
 		Element::new_with_children("root", vec![
-			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339())).boxed(),
+			Comment::new(format!("This XML document was generated on {}", Utc::now().to_rfc3339()))?.boxed(),
 			Element::new_with_text("motd", "Message of the day is: hello!")?.boxed()
 		])?
 	);
@@ -221,15 +221,45 @@ impl PartialEq<Self> for Document {
 	}
 }
 
+/** This enum lists the types of XML DOM nodes used in kiss_xml, useful for runtime reflection. */
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum DomNodeType {
+	/// node type is CDATA
+	CDataNode,
+	/// node type is Comment
+	CommentNode,
+	/// node type is Element
+	ElementNode,
+	/// node type is Text
+	TextNode
+}
+
+impl From<Box<dyn Node>> for DomNodeType {
+	fn from(value: Box<dyn Node>) -> Self {
+		value.node_type()
+	}
+}
+
+impl std::fmt::Display for DomNodeType {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		match self {
+			DomNodeType::CDataNode => write!(f, "CDATA"),
+			DomNodeType::CommentNode => write!(f, "Comment"),
+			DomNodeType::ElementNode => write!(f, "Element"),
+			DomNodeType::TextNode => write!(f, "Text"),
+		}
+	}
+}
+
 /**
 A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but only Elements can be branch nodes with children of their own.
  */
 pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToString {
 
 	/**
-	Returns the text content of the code. For a Comment or Text node, this is just the comment or text string. For an Element, this will return *all* text (including from child elements, recursive scan) as a single string, or `None` if this element has no child text nodes
+	Returns the text content of the node. For a Comment, CData, or Text node, this is just the comment or text string. For an Element, this will return *all* text nodes (including from child elements, recursive scan) as a single string, or an empty string if this element has no child text nodes
 	 */
-	fn text(&self) -> Option<String>;
+	fn text(&self) -> String;
 
 	/**
 	Returns `true` if this Node trait object is an Element struct, otherwise `false`
@@ -247,6 +277,28 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	fn is_comment(&self) -> bool;
 
 	/**
+	Returns `true` if this Node trait object is a CData struct, otherwise `false`
+	 */
+	fn is_cdata(&self) -> bool;
+
+	/**
+	Returns the type information for this node
+	*/
+	fn node_type(&self) -> DomNodeType {
+		if self.is_cdata() {
+			DomNodeType::CDataNode
+		} else if self.is_comment() {
+			DomNodeType::CommentNode
+		} else if self.is_element() {
+			DomNodeType::ElementNode
+		} else if self.is_text() {
+			DomNodeType::TextNode
+		} else {
+			panic!("Logic error! Box<dyn Node> value has no corresponding type in enum DomNodeType")
+		}
+	}
+
+	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_element(&self) -> Result<&Element, TypeCastError>;
@@ -262,6 +314,11 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	fn as_text(&self) -> Result<&Text, TypeCastError>;
 
 	/**
+	Casts this Node to a CData struct (if the Node is not an CData struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn as_cdata(&self) -> Result<&CData, TypeCastError>;
+
+	/**
 	Casts this Node to an Element struct (if the Node is not an Element struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError>;
@@ -275,6 +332,11 @@ pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToSt
 	Casts this Node to a Text struct (if the Node is not a Text struct, then `Err(TypeCastError)` error result is returned).
 	 */
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError>;
+
+	/**
+	Casts this Node to a CData struct (if the Node is not an CData struct, then `Err(TypeCastError)` error result is returned).
+	 */
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError>;
 
 	/**
 	Casts this struct to a Node trait object
@@ -317,21 +379,30 @@ pub fn clone_node(node: &Box<dyn Node>) -> Box<dyn Node> {
 		Box::new(node.as_text().expect("logic error").clone())
 	} else if node.is_comment() {
 		Box::new(node.as_comment().expect("logic error").clone())
+	} else if node.is_cdata() {
+		Box::new(node.as_cdata().expect("logic error").clone())
 	} else {
-		panic!("logic error: Node is neither of Element, Text, or Comment");
+		panic!("logic error: Node is neither of Element, Text, Comment, nor CData");
 	}
 }
 
 /// Returns true if the two nodes are equal, false otherwise
 pub fn node_eq(n1: &Box<dyn Node>, n2: &Box<dyn Node>) -> bool {
-	if n1.is_element() && n2.is_element() {
-		return n1.as_element().expect("logic error") == n2.as_element().expect("logic error");
-	} if n1.is_text() && n2.is_text() {
-		return n1.as_text().expect("logic error") == n2.as_text().expect("logic error");
-	} else if n1.is_comment() && n2.is_comment() {
-		return n1.as_comment().expect("logic error") == n2.as_comment().expect("logic error");
+	let t1 = n1.node_type();
+	let t2 = n2.node_type();
+	if t1 != t2 {
+		return false;
 	}
-	return false;
+	return match t1 {
+		DomNodeType::CDataNode =>
+			n1.as_cdata().unwrap() == n2.as_cdata().unwrap(),
+		DomNodeType::CommentNode =>
+			n1.as_comment().unwrap() == n2.as_comment().unwrap(),
+		DomNodeType::ElementNode =>
+			n1.as_element().unwrap() == n2.as_element().unwrap(),
+		DomNodeType::TextNode =>
+			n1.as_text().unwrap() == n2.as_text().unwrap()
+	}
 }
 
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
@@ -781,9 +852,13 @@ impl Element {
 			.filter(|n| n.is_element())
 			.map(|n| n.as_element_mut().expect("logic error"))
 	}
-	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
+	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator (non-recursive). For a recursive iterator of all children and children-of-children, use [all_children()](all_children())*/
 	pub fn children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
 		self.child_nodes.iter()
+	}
+	/** Returns a recusive iterator to all child nodes (elements, comments, and text components) */
+	pub fn all_children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
+		self.search(|_| true)
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
 	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>>{
@@ -961,7 +1036,7 @@ impl Element {
 		for fantasy_book in library.root_element().search(
 			|n| n.is_element() && n.as_element().unwrap().get_attr("genre") == Some(&"fantasy".to_string())
 		){
-			println!("{}", fantasy_book.text().expect("no title"));
+			println!("{}", fantasy_book.text());
 		}
 		Ok(())
 	}
@@ -996,7 +1071,7 @@ impl Element {
 		for fantasy_book in library.root_element().search_elements(
 			|e| e.get_attr("genre") == Some(&String::from("fantasy"))
 		){
-			println!("{}", fantasy_book.text().expect("no title"));
+			println!("{}", fantasy_book.text());
 		}
 		Ok(())
 	}
@@ -1033,7 +1108,7 @@ impl Element {
 		for book in library.root_element().search_elements_by_name(
 			"book"
 		){
-			println!("{}", book.text().expect("no title"));
+			println!("{}", book.text());
 		}
 		Ok(())
 	}
@@ -1156,7 +1231,7 @@ impl Element {
 		doc.root_element_mut().append_all(vec![
 			Element::new_with_text("song", "I Believe I Can Fly")?.boxed(),
 			Element::new_with_text("song", "My Heart Will Go On")?.boxed(),
-			Comment::new("album list incomplete").boxed(),
+			Comment::new("album list incomplete")?.boxed(),
 		]);
 		println!("{}", doc);
 		/* prints:
@@ -1237,7 +1312,7 @@ impl Element {
 		"#;
 		let mut dom = kiss_xml::parse_str(xml)?;
 		dom.root_element_mut().remove_all(
-			&|n| n.text().unwrap_or(String::new()).contains("work")
+			&|n| n.text().contains("work")
 		);
 		println!("Fun list:\n{}", dom);
 		// prints:
@@ -1336,8 +1411,10 @@ impl Element {
 	}
 
 	/// Implementation of writing DOM to XML string
-	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str) -> String {
-		let mut out = String::from(prefix);
+	/// (inline = true to bypass pretty-printing
+	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str, mut inline: bool) -> String {
+		let mut out = String::new();
+		if !inline {out.push_str(prefix)}
 		// tag name
 		let tag_name = self.tag_name();
 		out.push_str("<");
@@ -1360,39 +1437,47 @@ impl Element {
 		} else if child_count == 1 && !self.child_nodes[0].is_element() {
 			// single non-element child, display inline
 			out.push_str(">");
-			out.push_str(&self.child_nodes[0].to_string_with_indent(indent));
+			out.push_str(&self.child_nodes[0].to_string_with_indent(""));
 			out.push_str("</");
 			out.push_str(tag_name.as_str());
 			out.push_str(">");
 		} else {
 			// multiple children, prettify
-			out.push_str(">\n");
+			out.push('>');
+			/* here's where XML gets tricky and weird:
+			We want to pretty-print with indentation, BUT ONLY if said indentation would be
+			considered "insignificant" by a typical XML parser.
+			Whitespace between elements is considered insignificant, UNLESS...
+			" if the element is declared as having mixed content, both text and element child nodes,
+			then the XML parser must pass on all the white space found within the element."
+			-- http://usingxml.com/Basics/XmlSpace
+			*/
+			// check if this is a mixed element
+			inline = inline || self.child_nodes.iter().any(|n| n.is_text());
+			if !inline{out.push('\n');}
 			// prettify variables
 			let mut next_prefix = String::from(prefix);
 			next_prefix.push_str(indent);
-			let mut line_end = String::from("\n");
-			line_end.push_str(next_prefix.as_str());
 			for c in &self.child_nodes {
 				if c.is_text() {
-					// indent start of each line of text
-					let text = crate::text_escape(
-						c.text().or(Some(String::new()))
-							.expect("logic error")
-					);
-					out.push_str(next_prefix.as_str());
-					out.push_str(text.replace("\n", line_end.as_str()).as_str());
-				} else if c.is_comment() {
-					// indent start of comment
-					out.push_str(next_prefix.as_str());
-					out.push_str(c.to_string_with_indent(indent).as_str());
-				} else {
+					// text is always inline
+					let text = crate::text_escape(c.text());
+					out.push_str(text.as_str());
+				} else if c.is_element() {
 					// child element, recurse
-					out.push_str(c.as_element().expect("logic error").to_string_with_prefix_and_indent(next_prefix.as_str(), indent).as_str());
+					out.push_str(
+						c.as_element().expect("logic error")
+							.to_string_with_prefix_and_indent(next_prefix.as_str(), indent, inline).as_str()
+					);
+				} else {
+					// other
+					if !(inline) {out.push_str(next_prefix.as_str());}
+					out.push_str(c.to_string_with_indent(indent).as_str());
 				}
-				out.push_str("\n");
+				if !inline {out.push('\n');}
 			}
 			// closing tag
-			out.push_str(prefix);
+			if !inline {out.push_str(prefix);}
 			out.push_str("</");
 			out.push_str(tag_name.as_str());
 			out.push_str(">");
@@ -1404,22 +1489,15 @@ impl Element {
 
 impl Node for Element {
 
-	fn text(&self) -> Option<String> {
-		// Note: this is recursive
+	fn text(&self) -> String {
+		// Note: this is recursive, but only elements and text nodes
 		let mut builder = String::new();
 		for c in &self.child_nodes {
 			if c.is_text() || c.is_element() {
-				match c.text(){
-					None => {}
-					Some(txt) => builder.push_str(txt.as_str())
-				};
+				builder.push_str(c.text().as_str())
 			}
 		}
-		if builder.is_empty(){
-			None
-		} else {
-			Some(builder)
-		}
+		builder
 	}
 
 	fn is_element(&self) -> bool {
@@ -1434,17 +1512,25 @@ impl Node for Element {
 		false
 	}
 
+	fn is_cdata(&self) -> bool {
+		false
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1456,10 +1542,10 @@ impl Node for Element {
 
 	fn to_string_with_indent(&self, indent: &str) -> String {
 		match crate::validate_indent(indent){
-			Ok(_) => self.to_string_with_prefix_and_indent("", indent),
+			Ok(_) => self.to_string_with_prefix_and_indent("", indent, false),
 			Err(_) => {
 				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
-				self.to_string_with_prefix_and_indent("", "  ")
+				self.to_string_with_prefix_and_indent("", "  ", false)
 			}
 		}
 	}
@@ -1567,6 +1653,7 @@ impl Text {
 		Text{content}
 	}
 
+	/// checks if this Text node contains only whitespace
 	fn is_whitespace(&self) -> bool {
 		let singleton = WSP_MATCHER_SINGLETON;
 		let wsp_matcher = singleton.get_or_init(|| Regex::new(r#"^\s+$"#).unwrap());
@@ -1588,8 +1675,8 @@ impl From<String> for Text {
 
 impl Node for Text {
 
-	fn text(&self) -> Option<String> {
-		Some(self.content.clone())
+	fn text(&self) -> String {
+		self.content.clone()
 	}
 
 	fn is_element(&self) -> bool {
@@ -1604,17 +1691,25 @@ impl Node for Text {
 		false
 	}
 
+	fn is_cdata(&self) -> bool {
+		false
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as CData"))}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Ok(self)}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as CData"))}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1668,21 +1763,40 @@ impl std::fmt::Debug for Text {
 #[derive(Clone)]
 pub struct Comment{
 	/// The text of the comment
-	pub content: String
+	comment: String
 }
 
 impl Comment {
 	/// Constructs a new Comment node from the given string-like object
-	pub fn new(comment: impl Into<String>) -> Self {
+	pub fn new(comment: impl Into<String>) -> Result<Self, InvalidContent> {
 		let content: String = comment.into();
-		Self{content}
+		if content.contains("-->") {
+			Err(InvalidContent::new("Comments cannot contain '-->'"))
+		} else {
+			Ok(Self { comment: content })
+		}
+	}
+
+	/// Gets the content of this comment
+	pub fn get_content(&self) -> &str {
+		self.comment.as_str()
+	}
+	/// Sets the content of this comment
+	pub fn set_content(&mut self, content: impl Into<String>) -> Result<(), InvalidContent> {
+		let content = content.into();
+		if content.contains("-->") {
+			Err(InvalidContent::new("Comments cannot contain '-->'"))
+		} else {
+			self.comment = content.into();
+			Ok(())
+		}
 	}
 }
 
 impl Node for Comment {
 
-	fn text(&self) -> Option<String> {
-		Some(self.content.clone())
+	fn text(&self) -> String {
+		self.comment.clone()
 	}
 
 	fn is_element(&self) -> bool {
@@ -1697,17 +1811,25 @@ impl Node for Comment {
 		true
 	}
 
+	fn is_cdata(&self) -> bool {
+		false
+	}
+
 	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
 	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
 
 	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
 
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
+
 	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
 
 	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Ok(self)}
 
 	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
 
 	fn as_node(&self) -> &dyn Node {self}
 
@@ -1718,7 +1840,7 @@ impl Node for Comment {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
-		format!("<!--{}-->", self.content)
+		format!("<!--{}-->", self.comment)
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1728,31 +1850,31 @@ impl Node for Comment {
 
 impl From<&str> for Comment {
 	fn from(value: &str) -> Self {
-		Comment::new(value)
+		Comment::new(value).unwrap()
 	}
 }
 
 impl From<String> for Comment {
 	fn from(value: String) -> Self {
-		Comment::new(value)
+		Comment::new(value).unwrap()
 	}
 }
 
 impl PartialOrd for Comment {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.content.partial_cmp(&other.content)
+		self.comment.partial_cmp(&other.comment)
 	}
 }
 
 impl PartialEq<Self> for Comment {
 	fn eq(&self, other: &Self) -> bool {
-		self.content.eq(&other.content)
+		self.comment.eq(&other.comment)
 	}
 }
 
 impl Hash for Comment {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.content.hash(state)
+		self.comment.hash(state)
 	}
 }
 
@@ -1767,6 +1889,134 @@ impl std::fmt::Debug for Comment {
 		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
+
+/** This struct represents a CData element. CData is text data that should be preserved as-is without escaping or whitespace modification. CData is *not* binary data (though some non-standard uses of XML may store binary data in a CData tag) */
+#[derive(Clone)]
+pub struct CData{
+	/// The content of the cdata
+	cdata: String
+}
+
+impl CData {
+	/// Constructs a new CData node from the given string-like object
+	pub fn new(cdata: impl Into<String>) -> Result<Self, InvalidContent> {
+		let content: String = cdata.into();
+		if content.contains("]]>") {
+			Err(InvalidContent::new("CDATA cannot contain ']]>' as content"))
+		} else {
+			Ok(Self { cdata: content })
+		}
+	}
+
+	/// Sets the content of this CDATA
+	pub fn set_text(&mut self, content: impl Into<String>) -> Result<(), InvalidContent> {
+		let content = content.into();
+		if content.contains("]]>") {
+			Err(InvalidContent::new("CDATA cannot contain ']]>'"))
+		} else {
+			self.cdata = content.into();
+			Ok(())
+		}
+	}
+}
+
+impl Node for CData {
+
+	fn text(&self) -> String {
+		self.cdata.clone()
+	}
+
+	fn is_element(&self) -> bool {
+		false
+	}
+
+	fn is_text(&self) -> bool {
+		false
+	}
+
+	fn is_comment(&self) -> bool {
+		false
+	}
+
+	fn is_cdata(&self) -> bool {
+		true
+	}
+
+	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+
+	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Ok(&self)}
+
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Ok(self)}
+
+	fn as_node(&self) -> &dyn Node {self}
+
+	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+
+	fn as_any(&self) -> &dyn Any {self}
+
+	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+
+	fn to_string_with_indent(&self, _indent: &str) -> String {
+		format!("<![CDATA[{}]]>", self.cdata)
+	}
+
+	fn boxed(self) -> Box<dyn Node> {
+		Box::new(self)
+	}
+}
+
+impl From<&str> for CData {
+	fn from(value: &str) -> Self {
+		CData::new(value).unwrap()
+	}
+}
+
+impl From<String> for CData {
+	fn from(value: String) -> Self {
+		CData::new(value).unwrap()
+	}
+}
+
+impl PartialOrd for CData {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		self.cdata.partial_cmp(&other.cdata)
+	}
+}
+
+impl PartialEq<Self> for CData {
+	fn eq(&self, other: &Self) -> bool {
+		self.cdata.eq(&other.cdata)
+	}
+}
+
+impl Hash for CData {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.cdata.hash(state)
+	}
+}
+
+impl std::fmt::Display for CData {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.to_string_with_indent("  "))
+	}
+}
+
+impl std::fmt::Debug for CData {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.to_string_with_indent("  "))
+	}
+}
+
 
 /** An XML document declaration, ie `<?xml version="1.0" encoding="UTF-8"?>`
 
