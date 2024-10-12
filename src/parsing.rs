@@ -1,9 +1,9 @@
+/*!
+ this module contains utilities exclusive to parsing
+ */
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hasher;
-/**
- this module contains utilities exclusive to parsing
- */
 
 use crate::dom::*;
 use crate::errors::*;

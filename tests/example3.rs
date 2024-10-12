@@ -1,3 +1,5 @@
+//! Example usage tests
+
 /// API usage example
 #[test]
 fn example3() -> Result<(), kiss_xml::errors::KissXmlError>{
