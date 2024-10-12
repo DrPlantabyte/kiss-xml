@@ -107,5 +107,7 @@ fn test_issue_21_panic() {
 <property =
 <property />
 "#;
-	assert!(kiss_xml::parse_str(xml).is_err());
+	let result = kiss_xml::parse_str(xml);
+	assert!(result.is_err());
+	println!("{:?}", result.err());
 }
