@@ -1,5 +1,6 @@
 #![deny(unused_must_use)]
 #![deny(missing_docs)]
+#![deny(dead_code)]
 //! This file is for adding unit tests that correspond to issues tracked in GitHub
 //!
 //! Each test here must have a description with a link to the issue in GitHub
@@ -93,3 +94,18 @@ fn test_issue_17_modify() {
 	);
 }
 
+
+/**
+Malformed XML tag with = in it is causing a panic.
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/21
+*/
+#[test]
+fn test_issue_21_panic() {
+	use kiss_xml;
+	let xml = r#"
+<property =
+<property />
+"#;
+	assert!(kiss_xml::parse_str(xml).is_err());
+}
