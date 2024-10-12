@@ -622,6 +622,12 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 			)).into());
 		}
 		let (k, mut v) = kv.split_once("=").unwrap();
+		if v.len() == 0 { // ISSUE 21: '<something =</something>' causes panic
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}: no content after ="
+			)).into());
+		}
 		// note: v string contains enclosing quotes
 		v = &v[1..(v.len()-1)]; // remove quotes
 		attrs.insert(k.to_string(), v.to_string());
