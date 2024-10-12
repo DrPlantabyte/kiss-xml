@@ -3,6 +3,7 @@ use kiss_xml::dom::*;
 use std::collections::HashMap;
 use std::error::Error;
 
+/// string test
 #[test]
 fn test_strings() -> Result<(), Box<dyn Error>> {
 	eprintln!("starting test test_strings()...");
@@ -39,6 +40,7 @@ fn test_strings() -> Result<(), Box<dyn Error>> {
 	Ok(())
 }
 
+/// string test
 #[test]
 fn test_strings_inline() -> Result<(), Box<dyn Error>> {
 	eprintln!("starting test test_strings()...");
@@ -70,6 +72,7 @@ fn test_strings_inline() -> Result<(), Box<dyn Error>> {
 	Ok(())
 }
 
+/// equality test
 #[test]
 fn test_node_eq() {
 	use kiss_xml::dom::*;
@@ -173,6 +176,7 @@ fn test_node_eq() {
 	);
 }
 
+/// clone test
 #[test]
 fn test_clone_node() {
 	use kiss_xml;
@@ -201,6 +205,7 @@ fn test_clone_node() {
 	}
 }
 
+/// text-handling test
 #[test]
 fn test_leading_trailing_text() {
 	use kiss_xml;
