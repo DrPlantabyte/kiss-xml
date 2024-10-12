@@ -1,4 +1,4 @@
-
+/// check that bad XML is identified as such
 #[test]
 fn test_unclosed_root() {
 	use kiss_xml;
