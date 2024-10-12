@@ -1,3 +1,4 @@
+//! String/text handling tests
 use kiss_xml;
 use kiss_xml::dom::*;
 use std::collections::HashMap;

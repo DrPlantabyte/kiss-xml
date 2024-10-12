@@ -1,3 +1,5 @@
+//! Example usage tests
+
 /// Simple example showing Element::new_with_attributes(...)
 #[test]
 fn example1() {
