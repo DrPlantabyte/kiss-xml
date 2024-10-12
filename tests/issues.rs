@@ -129,4 +129,3 @@ fn test_issue_26_panic() {
 	assert!(result.is_err());
 	println!("{:?}", result.err());
 }
-
