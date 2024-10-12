@@ -1,4 +1,6 @@
+//! Example usage tests
 
+/// Simple example of read-only usage
 #[test]
 fn example1() {
 	use kiss_xml;

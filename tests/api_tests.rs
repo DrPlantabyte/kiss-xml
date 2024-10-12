@@ -1,5 +1,6 @@
 //! API tests
 
+/// test XML escaping
 #[test]
 fn test_xml_escapes() {
 	use kiss_xml;
@@ -15,6 +16,7 @@ fn test_xml_escapes() {
 	assert_eq!(kiss_xml::unescape("&#263C;"), "☼", "Incorrect unescaping of unicode character #236C '☼'");
 }
 
+/// example XML string
 fn sample_xml_1() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE note [
@@ -39,6 +41,7 @@ fn sample_xml_1() -> &'static str {
 "#
 }
 
+/// example XML string
 fn sample_xml_2() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
 <root author="some dude">
@@ -57,6 +60,7 @@ fn sample_xml_2() -> &'static str {
 "#
 }
 
+/// example XML string
 fn sample_xml_3() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns="internal://ns/a">
@@ -66,6 +70,7 @@ fn sample_xml_3() -> &'static str {
 "#
 }
 
+/// example XML string
 fn sample_xml_4() -> &'static str {
 	r#"<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:dim="internal://ns/b" xmlns:img="internal://ns/a">
@@ -79,6 +84,7 @@ fn sample_xml_4() -> &'static str {
 "#
 }
 
+/// example XML string
 fn sample_xml_5() -> &'static str {
 	// Note: XML elements only inherit the default namespace of their parent, not the prefixed namespace
 	r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -93,6 +99,7 @@ fn sample_xml_5() -> &'static str {
 "#
 }
 
+/// API for loading from file
 #[test]
 fn test_load_from_file() {
 	use kiss_xml;
@@ -112,6 +119,7 @@ fn test_load_from_file() {
 	assert_eq!(doc, doc2, "File and string parsers diverged!");
 }
 
+/// confirm serialization round-trip
 #[test]
 fn test_round_trip() {
 	let doc1 = kiss_xml::parse_str(sample_xml_2()).unwrap();
@@ -124,6 +132,7 @@ fn test_round_trip() {
 	assert_eq!(str2, str3, "round trip XML is different from original");
 }
 
+/// API for parsing the DOM
 #[test]
 fn test_dom_parsing() {
 	use kiss_xml;
@@ -159,6 +168,7 @@ fn test_dom_parsing() {
 	assert_eq!(root.search_comments(|c| c.get_content().contains("this does not exist")).count(), 0, "Found non-existent comment in recursive search");
 }
 
+/// API for editing the DOM
 #[test]
 fn test_modify_dom() {
 	use kiss_xml;
@@ -209,6 +219,7 @@ fn test_modify_dom() {
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
+/// API for removing nodes
 #[test]
 fn test_remove_1(){
 	use kiss_xml;
@@ -244,6 +255,7 @@ fn test_remove_1(){
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
+/// API for removing nodes
 #[test]
 fn test_remove_2(){
 	use kiss_xml;
@@ -270,6 +282,7 @@ fn test_remove_2(){
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), expected_str, "Incorrect XML generated");
 }
 
+/// API for removing nodes
 #[test]
 fn test_remove_3(){
 	use kiss_xml;
@@ -302,6 +315,7 @@ fn test_dom_to_string() {
 	assert_eq!(doc.to_string_with_indent(indent).as_str(), xml_str, "Source XML not recreated by to_string() method");
 }
 
+/// API for writing to a file
 #[test]
 fn test_dom_to_file() {
 	use kiss_xml;
@@ -321,6 +335,7 @@ fn test_dom_to_file() {
 	assert_eq!(file_content.as_str(), xml_str, "Source XML not recreated by write_to_file() method");
 }
 
+/// API for writing to a file
 #[test]
 fn test_dom_to_filepath() {
 	use kiss_xml;
@@ -338,6 +353,7 @@ fn test_dom_to_filepath() {
 	assert_eq!(file_content.as_str(), xml_str, "Source XML not recreated by write_to_filepath() method");
 }
 
+/// fmt::Display implementation
 #[test]
 fn test_display(){
 	use kiss_xml;
@@ -346,6 +362,7 @@ fn test_display(){
 	println!("Root Element:\n{}\n\n", doc.root_element());
 }
 
+/// fmt::Debug implementation
 #[test]
 fn test_debug_display(){
 	use kiss_xml;
@@ -354,6 +371,7 @@ fn test_debug_display(){
 	println!("Root Element:\n{:?}\n\n", doc.root_element());
 }
 
+/// API for namespaces
 #[test]
 fn test_namespaces_1() {
 	use kiss_xml;
@@ -371,6 +389,7 @@ fn test_namespaces_1() {
 	assert!(doc.root_element().first_element_by_name("depth").unwrap().namespace_prefix().is_none(), "XML namespace prefix not correctly inherited");
 }
 
+/// API for namespaces
 #[test]
 fn test_namespaces_2() {
 	use kiss_xml;
@@ -385,6 +404,7 @@ fn test_namespaces_2() {
 	assert_eq!(doc.to_string_with_indent("\t").as_str(), sample_xml_4(), "XML not regenerated correctly")
 }
 
+/// API for namespaces
 #[test]
 fn test_namespaces_3() {
 	use kiss_xml;
@@ -394,6 +414,7 @@ fn test_namespaces_3() {
 	assert_eq!(doc.root_element().elements_by_namespace_prefix(None).count(), 2, "XML namespace not correctly parsed or inherited");
 }
 
+/// API for coments and text
 #[test]
 fn test_modify_text_and_comments() {
 	use kiss_xml;
