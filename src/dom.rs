@@ -1358,7 +1358,7 @@ impl Element {
 			if self.child_nodes[i].is_element(){ elems.push(i); }
 		}
 		// now remove the requested element
-		if index > elems.len() {
+		if index >= elems.len() {
 			return Err(IndexOutOfBounds::new(index as isize, Some((0, elems.len() as isize))));
 		}
 		let removed = self.child_nodes.remove(elems[index]);

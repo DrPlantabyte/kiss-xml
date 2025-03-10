@@ -111,3 +111,22 @@ fn test_issue_21_panic() {
 	assert!(result.is_err());
 	println!("{:?}", result.err());
 }
+
+/**
+Calling Element.remove_element(usize) when there are no children causes it to try to remove index 0 from a vec instead of creating the proper error
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/26
+*/
+#[test]
+fn test_issue_26_panic() {
+	use kiss_xml;
+	let xml = r#"
+<properties />
+"#;
+	let mut dom = kiss_xml::parse_str(xml).unwrap();
+	let element: &mut kiss_xml::dom::Element = dom.root_element_mut();
+	let result = element.remove_element(0);
+	assert!(result.is_err());
+	println!("{:?}", result.err());
+}
+
