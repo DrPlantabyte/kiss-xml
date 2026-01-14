@@ -1042,7 +1042,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
+	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Box<dyn Node>> + 'a> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
 		// recursive
 		Box::new(
 			self.children_recursive().filter(predicate)
@@ -1077,7 +1077,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &Element> + '_> where P: FnMut(&&Element) -> bool + 'a {
+	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &'a Element> + 'a> where P: FnMut(&&Element) -> bool + 'a {
 		// recursive
 		Box::new(
 			self.search(|n| n.is_element())
@@ -1120,7 +1120,7 @@ impl Element {
 		self.search_elements(move |e| e.name() == n)
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Text> + '_> where P: Fn(&&Text) -> bool + 'a {
+	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Text> + 'a> where P: Fn(&&Text) -> bool + 'a {
 		// recursive
 		Box::new(
 			self.search(|n| n.is_text())
@@ -1130,7 +1130,7 @@ impl Element {
 	}
 
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &Comment> + '_> where P: Fn(&&Comment) -> bool + 'a {
+	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Comment> + 'a> where P: Fn(&&Comment) -> bool + 'a {
 		// recursive
 		Box::new(
 			self.search(|n| n.is_comment())
