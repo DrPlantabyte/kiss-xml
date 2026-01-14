@@ -130,3 +130,27 @@ fn test_issue_26_panic() {
 	println!("{:?}", result.err());
 }
 
+/**
+Panic on improperly quoted attributes
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/28
+*/
+#[test]
+fn test_issue_28_panic() {
+	use kiss_xml;
+	let xml = r#"<ot Xttr=t Xttr"valud</ro>o">"#;
+
+	assert!(kiss_xml::parse_str(xml).is_err());
+}
+
+/**
+Panic on "<!-->" in content of root element.
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/29
+*/
+#[test]
+fn test_issue_29_panic() {
+	use kiss_xml;
+	let xml = r#"<root><!--></root>"#;
+	assert!(kiss_xml::parse_str(xml).is_err());
+}
