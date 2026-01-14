@@ -499,13 +499,27 @@ pub fn parse_str(xml_string: impl Into<String>) -> Result<dom::Document, errors:
 		let slice = &buffer[tag_span.0 .. tag_span.1];
 		if slice.starts_with("<!--") && slice.ends_with("-->") {
 			// comment
-			parse_stack.append(dom::Comment::new(&slice[4 .. slice.len().saturating_sub(3)])?)
-				.map_err(|e|{
-					let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
-					errors::ParsingError::new(format!(
-						"{} (syntax error on line {line}, column {col})", e
-					))
-				})?;
+			let begin = 4;
+			let end = slice.len().saturating_sub(3);
+			if begin < end {
+				// well-formatted comment
+				parse_stack.append(dom::Comment::new(&slice[begin..end])?)
+					.map_err(|e| {
+						let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+						errors::ParsingError::new(format!(
+							"{} (syntax error on line {line}, column {col})", e
+						))
+					})?;
+			} else if begin == end {
+				// empty comment, shortcut parsing
+				parse_stack.append(dom::Comment::new(String::new())?)?;
+			} else {
+				// invalid comment syntax (eg "<!-->")
+				let (line, col) = line_and_column(&buffer, next_span.0.unwrap());
+				return Err(errors::ParsingError::new(format!(
+					"invalid comment syntax on line {line}, column {col}"
+				)).into());
+			}
 		} else if slice.starts_with("<![CDATA["){
 			// CDATA
 			if !slice.ends_with("]]>") {
@@ -628,7 +642,14 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 				"invalid XML syntax on line {line}, column {col}: no content after ="
 			)).into());
 		}
-		// note: v string contains enclosing quotes
+		// note: v string contains enclosing quotes (if it follows correct XML syntax)
+		if v.len() <= 2 || !v.starts_with('"') || !v.ends_with('"') {
+			// syntax error
+			let (line, col) = line_and_column(&buffer, tag_span.0);
+			return Err(errors::ParsingError::new(format!(
+				"invalid XML syntax on line {line}, column {col}: attribute value must be quoted with double-quotes"
+			)).into());
+		}
 		v = &v[1..(v.len()-1)]; // remove quotes
 		attrs.insert(k.to_string(), v.to_string());
 	}
