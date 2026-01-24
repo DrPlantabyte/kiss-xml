@@ -1720,7 +1720,7 @@ impl Node for Text {
 	fn as_any_mut(&mut self) -> &mut dyn Any{self}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
-		self.content.clone()
+		crate::text_escape(self.content.clone())
 	}
 
 	fn boxed(self) -> Box<dyn Node> {
@@ -1917,6 +1917,11 @@ impl CData {
 			self.cdata = content.into();
 			Ok(())
 		}
+	}
+
+	/// Gets the content of this CDATA
+	pub fn get_content(&self) -> &str {
+		self.cdata.as_str()
 	}
 }
 

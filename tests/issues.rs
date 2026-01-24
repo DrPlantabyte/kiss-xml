@@ -154,3 +154,15 @@ fn test_issue_29_panic() {
 	let xml = r#"<root><!--></root>"#;
 	assert!(kiss_xml::parse_str(xml).is_err());
 }
+
+/**
+Data corruption due to incorrect application of XML escapes
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/34
+*/
+#[test]
+fn test_issue_34_escaped_text() {
+	use kiss_xml;
+	let xml = "<ProductName>&lt;AppName&gt;</ProductName>\n";
+	assert_eq!(kiss_xml::parse_str(xml).expect("xml parse error").to_string().as_str(), xml);
+}
