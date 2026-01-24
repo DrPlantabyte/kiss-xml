@@ -1918,6 +1918,11 @@ impl CData {
 			Ok(())
 		}
 	}
+
+	/// Gets the content of this CDATA
+	pub fn get_content(&self) -> &str {
+		self.cdata.as_str()
+	}
 }
 
 impl Node for CData {
