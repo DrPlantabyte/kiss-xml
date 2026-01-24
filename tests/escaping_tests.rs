@@ -16,18 +16,17 @@ fn test_content_escapes(){
 "#);
 }
 
-/// attribute escape handling test: interpret all escapes and only escape
-/// <, &, and " on serialization
+/// attribute escape handling test: interpret all escapes and apply all escapes
+/// on re-serialization (technically, only <, &, and " need to be escaped, but
+/// we've decided to do all in attributes for consistency)
 #[test]
 fn test_attribute_escapes(){
 	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-<root a="&lt;&gt;&amp;&quot;&apos;" />
+<root a="&lt;&gt;&amp;&quot;&apos;"/>
 "#;
 	let dom = kiss_xml::parse_str(xml).expect("Error parsing XML");
 	assert_eq!(dom.root_element().get_attr("a").unwrap().as_str(), "<>&\"'");
-	assert_eq!(dom.to_string().as_str(),r#"<?xml version="1.0" encoding="UTF-8"?>
-<root a="&lt;>&amp;&quot;'" />
-"#);
+	assert_eq!(dom.to_string().as_str(), xml);
 }
 
 /// comments should not be escaped

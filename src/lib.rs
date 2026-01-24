@@ -256,7 +256,7 @@ pub fn text_escape(text: impl Into<String>) -> String {
 		.replace(">", "&gt;")
 }
 
-/// Escapes a subset of XML reserved characters (&, ', and ") in an attribute
+/// Escapes a subset of XML reserved characters (&, <, and ") in an attribute
 /// into XML-compatible text, eg replacing "&" with "&amp;amp;" and "'" with "&amp;apos;"
 pub fn attribute_escape(text: impl Into<String>) -> String {
 	escape(text)
@@ -651,7 +651,7 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 			)).into());
 		}
 		v = &v[1..(v.len()-1)]; // remove quotes
-		attrs.insert(k.to_string(), v.to_string());
+		attrs.insert(k.to_string(), unescape(v.to_string()));
 	}
 	// parse name and namespace
 	let mut name = components[0].as_str();
