@@ -166,3 +166,18 @@ fn test_issue_34_escaped_text() {
 	let xml = "<ProductName>&lt;AppName&gt;</ProductName>\n";
 	assert_eq!(kiss_xml::parse_str(xml).expect("xml parse error").to_string().as_str(), xml);
 }
+
+/**
+XML spec allows for upt ot one space before and after an equal sign in a tag's attributes
+
+See https://github.com/DrPlantabyte/kiss-xml/issues/33
+*/
+#[test]
+fn test_issue_33_spaced_attributes() {
+	use kiss_xml;
+	let xml = r#"<root a="1" b = "2" c= "3" d ="4" x="don't be fooled by =" y=" in value"/>"#;
+	assert_eq!(
+		kiss_xml::parse_str(xml).expect("xml parse error").to_string().as_str().trim(),
+		r#"<root a="1" b="2" c="3" d="4" x="don&apos;t be fooled by =" y=" in value"/>"#
+	);
+}
