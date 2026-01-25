@@ -235,7 +235,7 @@ as-is or with modification, without any limitations.
 
 use std::cell::{OnceCell};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
@@ -625,6 +625,8 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 			"invalid XML syntax on line {line}, column {col}: empty tags not supported"
 		)).into());
 	}
+	// join spaced attributes (ie key = "value" or key= "value" or kay ="value")
+	let components = join_spaced_attributes(components);
 	// parse attributes
 	let mut attrs: HashMap<String, String> = HashMap::new();
 	for i in 1..components.len() {
@@ -686,6 +688,29 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 	)?;
 	new_element.set_namespace_context(inherited_default_namespace, inherited_xmlns_context);
 	Ok(new_element)
+}
+
+/// merge occurrences of [..., 'key', '=', '"value"', ...] into [..., 'key="value"', ...]
+fn join_spaced_attributes(split_components: Vec<String>) -> Vec<String> {
+	// NOTE: first component is tag name
+	let mut result = Vec::new();
+	if split_components.is_empty() {return result;}
+	let mut components = VecDeque::from(split_components);
+	result.push(components.pop_front().expect("logic error"));
+	while !components.is_empty() {
+		let mut comp = components.pop_front().expect("logic error");
+		// check if this component should merge with the next one (ends in = or next comp is =)
+		if !components.is_empty() && (comp.ends_with("=") || components.front().expect("logic error").starts_with("=")) {
+			comp.push_str(components.pop_front().expect("logic error").as_str());
+			// check if another merge is needed (ie original string was 'key = "value"')
+			if !components.is_empty() && (comp.ends_with("=") || components.front().expect("logic error").starts_with("=")) {
+				comp.push_str(components.pop_front().expect("logic error").as_str());
+			}
+		}
+		// push component to result list
+		result.push(comp);
+	}
+	result
 }
 
 /// removes leading and trailing <> and/or /
