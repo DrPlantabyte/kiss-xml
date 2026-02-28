@@ -245,7 +245,7 @@ use crate::errors::KissXmlError;
 pub mod errors;
 pub mod dom;
 mod parsing;
-
+mod encodings;
 
 /// Escapes a subset of XML reserved characters (&, <, and >) in a text string
 /// into XML-compatible text, eg replacing "&" with "&amp;amp;" and "<" with "&amp;lt;"
