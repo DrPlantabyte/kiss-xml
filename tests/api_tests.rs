@@ -132,6 +132,18 @@ fn test_round_trip() {
 	assert_eq!(str2, str3, "round trip XML is different from original");
 }
 
+/// check that using single-quotes (apostrophes) instead of double-quotes also workks
+#[test]
+fn test_single_quote() {
+	let xml_test_strings = vec![sample_xml_1(),  sample_xml_2(), sample_xml_3(), sample_xml_4(), sample_xml_5()];
+	for xml in  xml_test_strings {
+		let doc1 = kiss_xml::parse_str(xml).unwrap();
+		let doc2 = kiss_xml::parse_str(xml.replace("\"", "'")).unwrap();
+		// NOTE: not comparing `doc1 == doc2` because the DTDs will be slightly different
+		assert_eq!(doc1.root_element(), doc2.root_element(), "Divergent parsing result with single vs double quotes");
+	}
+}
+
 /// API for parsing the DOM
 #[test]
 fn test_dom_parsing() {
