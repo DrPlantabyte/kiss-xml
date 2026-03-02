@@ -8,15 +8,16 @@ use kiss_xml::errors::*;
 /// check error printing
 #[test]
 fn test_error_printing(){
-	eprintln!("printing example error messages");
-	eprintln!("ParsingError: {}", ParsingError::new("test message"));
-	eprintln!("TypeCastError: {}", TypeCastError::new("test message"));
-	eprintln!("DoesNotExistError: {}", DoesNotExistError::new("test message"));
-	eprintln!("IndexOutOfBounds: {}", IndexOutOfBounds::new(2, Some((0, 1))));
-	eprintln!("InvalidAttributeName: {}", InvalidAttributeName::new("test message"));
-	eprintln!("InvalidElementName: {}", InvalidElementName::new("test message"));
-	eprintln!("InvalidContent: {}", InvalidContent::new("test message"));
-	eprintln!("NotSupportedError: {}", NotSupportedError::new("test message"));
+	eprintln!("=== printing example error messages ===");
+	eprintln!("ParsingError: {}", KissXmlError::from(ParsingError::new("test message")));
+	eprintln!("TypeCastError: {}", KissXmlError::from(TypeCastError::new("test message")));
+	eprintln!("DoesNotExistError: {}", KissXmlError::from(DoesNotExistError::new("test message")));
+	eprintln!("IndexOutOfBounds: {}", KissXmlError::from(IndexOutOfBounds::new(2, Some((0, 1)))));
+	eprintln!("InvalidAttributeName: {}", KissXmlError::from(InvalidAttributeName::new("test message")));
+	eprintln!("InvalidElementName: {}", KissXmlError::from(InvalidElementName::new("test message")));
+	eprintln!("InvalidContent: {}", KissXmlError::from(InvalidContent::new("test message")));
+	eprintln!("NotSupportedError: {}", KissXmlError::from(NotSupportedError::new("test message")));
+	eprintln!("=== done printing error messages ===");
 }
 
 /// test expected error conditions
@@ -98,5 +99,47 @@ fn test_invalid_element_name_error(){
 	}
 }
 
+/// test DTDs
+#[test]
+fn test_dtd_handling(){
+	let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note [
+<!ENTITY ignore "kiss-xml ignores DOCTYPE stuff">
+<!ENTITY nbsp "&#xA0;">
+<!ENTITY writer "Writer: Donald Duck.">
+<!ENTITY copyright "Copyright: W3Schools.">
+]>
+<note>
+	<!-- Note: commented out the following elements:
+	<region>somewhere</region>
+	<language>ISL-2108</language>
+	-->
+	<to>Tove</to>
+	<from>Jani</from>
+	<heading>Reminder</heading>
+	<paragraph>Don't forget <b>me</b> this weekend!</paragraph>
+	<paragraph> - Jani</paragraph>
+	<footer>&writer;&nbsp;&copyright;</footer>
+	<signed signer="Jani Jane"/>
+</note>"#;
+	let mut doc = kiss_xml::parse_str(xml).unwrap();
+	assert!(doc.doctype_defs().count() == 1);
+	assert!(doc.doctype_defs_mut().count() == 1);
+	assert!(DTD::from_string("note1").is_err());
+	assert!(DTD::from_string("<!DOCTYPE note1 >").is_ok());
+	let new_dtds = [
+		DTD::from_string("<!DOCTYPE note1 >").unwrap(),
+		DTD::from_string("<!DOCTYPE note2 >").unwrap(),
+	];
+	doc.set_doctype_defs(Some(&new_dtds));
+	assert!(doc.doctype_defs().count() == new_dtds.len());
+}
 
-
+/// test custom/removal of XML declaration
+#[test]
+fn test_declaration(){
+	let mut doc = Document::new(Element::new_from_name("root").unwrap());
+	assert!(doc.to_string().starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
+	doc.set_declaration(None);
+	assert!(doc.to_string().starts_with("<root"));
+}

@@ -107,8 +107,8 @@ Gets the XML declaration for this document, if it has one (while the XML spec re
 	/**
 Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
 	 */
-	pub fn set_declaration(&mut self, decl: Declaration) {
-		self.declaration = Some(decl)
+	pub fn set_declaration(&mut self, decl: Option<Declaration>) {
+		self.declaration = decl
 	}
 
 	/**
