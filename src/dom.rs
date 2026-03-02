@@ -1289,7 +1289,7 @@ impl Element {
 	Removes the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an Err result is returned, otherwise the removed node is return as an Ok result.
 	 */
 	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, IndexOutOfBounds> {
-		if index > self.child_nodes.len() {
+		if index >= self.child_nodes.len() {
 			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
 		}
 		Ok(self.child_nodes.remove(index))
