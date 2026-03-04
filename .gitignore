@@ -20,3 +20,4 @@ tarpaulin-report.html
 
 # random stuff
 politics.xml
+**/__pycache__
