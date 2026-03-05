@@ -182,11 +182,20 @@ mod tests {
 	#[test]
 	fn test_elastic_reader() {
 		let original_text = "0123456789abcdefghijklmnopqrstuvwxyz";
-		let src_reader = io::BufReader::new(original_text.as_bytes());
+		let src_reader = io::BufReader::new(original_text.clone().as_bytes());
 		let elastic_reader = ElasticReader::from(src_reader);
-		assert_eq!(elastic_reader.peek_until("345"), Some(String::from("012")));
-		assert_eq!(elastic_reader.peek_until("345"), Some(String::from("012")));
-		assert!(elastic_reader.peek_until("37").);
+		assert_eq!(elastic_reader.peek_until("345".as_bytes(), usize::MAX), Some("012345".as_bytes()));
+		assert_eq!(elastic_reader.peek_until("345".as_bytes(), usize::MAX), Some("012345".as_bytes()));
+		assert!(elastic_reader.peek_until("37".as_bytes(), usize::MAX).is_none());
+		assert!(elastic_reader.peek_until("9".as_bytes(), 7).is_none());
+		assert_eq!(elastic_reader.peek_until_str("345", usize::MAX), Some("012345"));
+		assert!(elastic_reader.peek_until_str("345", 2).is_none());
+		assert_eq!(elastic_reader.read_until("9".as_bytes(), usize::MAX), "0123456789".as_bytes());
+		assert_eq!(elastic_reader.read_until("9".as_bytes(), usize::MAX), "abcdefghijklmnopqrstuvwxyz".as_bytes());
+		//
+		let src_reader = io::BufReader::new(original_text.clone().as_bytes());
+		let elastic_reader = ElasticReader::from(src_reader);
+
 		todo!()
 	}
 }
