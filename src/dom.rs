@@ -40,10 +40,10 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
+use crate::errors::*;
+use regex::Regex;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use regex::Regex;
-use crate::errors::*;
 
 /**
 A Document represents a DOM plus additional (optional) metadata such as one or more Document Type Declarations (DTD). Use this struct to write a DOM to a string or file.
@@ -54,27 +54,27 @@ pub struct Document {
 	/// Doctype defs, if any
 	dtds: Vec<DTD>,
 	/// Root element (multi-element XML docs not supported)
-	root_element: Element
+	root_element: Element,
 }
 
 impl Document {
 	/**
-Constructs a new Document with the given root element and default declaration
-	 */
+	Constructs a new Document with the given root element and default declaration
+		 */
 	pub fn new(root: Element) -> Self {
 		Document::new_with_decl_dtd(root, Some(Declaration::default()), None)
 	}
 	/**
-Full constructor with required root element and optional XML declaration and optional list of one or more document type definition (DTD) items.
-	 */
+	Full constructor with required root element and optional XML declaration and optional list of one or more document type definition (DTD) items.
+		 */
 	pub fn new_with_decl_dtd(root: Element, declaration: Option<Declaration>, dtd: Option<&[DTD]>) -> Self {
-		Self{
-			declaration: declaration,
-			dtds: match dtd{
+		Self {
+			declaration,
+			dtds: match dtd {
 				None => Vec::with_capacity(1),
-				Some(dtds) => Vec::from(dtds)
+				Some(dtds) => Vec::from(dtds),
 			},
-			root_element: root
+			root_element: root,
 		}
 	}
 	/**
@@ -90,30 +90,30 @@ Full constructor with required root element and optional XML declaration and opt
 		self.dtds.iter_mut()
 	}
 	/**
-Sets the DTDs for this document (a `None` argument will remove all DTDs)
-	 */
+	Sets the DTDs for this document (a `None` argument will remove all DTDs)
+		 */
 	pub fn set_doctype_defs(&mut self, dtds: Option<&[DTD]>) {
 		match dtds {
 			None => self.dtds = Vec::with_capacity(1),
-			Some(dlist) => self.dtds = Vec::from(dlist)
+			Some(dlist) => self.dtds = Vec::from(dlist),
 		}
 	}
 	/**
-Gets the XML declaration for this document, if it has one (while the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file).
-	 */
+	Gets the XML declaration for this document, if it has one (while the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file).
+		 */
 	pub fn declaration(&self) -> &Option<Declaration> {
 		&self.declaration
 	}
 	/**
-Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
-	 */
+	Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
+		 */
 	pub fn set_declaration(&mut self, decl: Option<Declaration>) {
 		self.declaration = decl
 	}
 
 	/**
-Produces the XML text representing this XML DOM using the default indent of two spaces per level
-	 */
+	Produces the XML text representing this XML DOM using the default indent of two spaces per level
+		 */
 	pub fn to_string(&self) -> String {
 		self.to_string_with_indent("  ")
 	}
@@ -127,20 +127,23 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	 */
 	pub fn to_string_with_indent(&self, indent: impl Into<String>) -> String {
 		let mut indent = indent.into();
-		match crate::validate_indent(indent.as_str()){
+		match crate::validate_indent(indent.as_str()) {
 			Ok(_) => {},
 			Err(_) => {
-				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				eprintln!(
+					"WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead",
+					indent
+				);
 				indent = "  ".to_string();
-			}
+			},
 		};
 		let mut builder = String::new();
-		match &self.declaration{
+		match &self.declaration {
 			None => {},
 			Some(decl) => {
 				builder.push_str(decl.to_string().as_str());
 				builder.push_str("\n");
-			}
+			},
 		}
 		for dtd in &self.dtds {
 			builder.push_str(dtd.to_string().as_str());
@@ -161,12 +164,14 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	/**
 	Writes this document as XML to the given file using the provided indent, returning a result indicating success or error in this write operation
 	 */
-	pub fn write_to_filepath_with_indent(&self, path: impl AsRef<Path>, indent: impl Into<String>) -> std::io::Result<()> {
+	pub fn write_to_filepath_with_indent(
+		&self, path: impl AsRef<Path>, indent: impl Into<String>,
+	) -> std::io::Result<()> {
 		use std::fs;
 		// if parent dir does not exist, create it
-		match path.as_ref().parent(){
-			None => {}
-			Some(dir) => fs::create_dir_all(dir)?
+		match path.as_ref().parent() {
+			None => {},
+			Some(dir) => fs::create_dir_all(dir)?,
 		};
 		// write to file
 		fs::write(path, self.to_string_with_indent(indent))
@@ -182,7 +187,9 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	/**
 	Writes this document as XML to the given file or stream using the default indent of two spaces per level, returning a result indicating success or error in this write operation
 	 */
-	pub fn write_to_file_with_indent(&self, out: &mut impl std::io::Write, indent: impl Into<String>) -> std::io::Result<()> {
+	pub fn write_to_file_with_indent(
+		&self, out: &mut impl std::io::Write, indent: impl Into<String>,
+	) -> std::io::Result<()> {
 		write!(out, "{}", self.to_string_with_indent(indent))
 	}
 
@@ -201,13 +208,13 @@ Produces the XML text representing this XML DOM using the default indent of two 
 	}
 }
 
-impl std::fmt::Display for Document{
+impl std::fmt::Display for Document {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.to_string_with_indent("  "))
 	}
 }
 
-impl std::fmt::Debug for Document{
+impl std::fmt::Debug for Document {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.to_string_with_indent("  "))
 	}
@@ -215,9 +222,7 @@ impl std::fmt::Debug for Document{
 
 impl PartialEq<Self> for Document {
 	fn eq(&self, other: &Self) -> bool {
-		self.declaration == other.declaration
-		&& self.dtds == other.dtds
-		&& self.root_element == other.root_element
+		self.declaration == other.declaration && self.dtds == other.dtds && self.root_element == other.root_element
 	}
 }
 
@@ -231,7 +236,7 @@ pub enum DomNodeType {
 	/// node type is Element
 	ElementNode,
 	/// node type is Text
-	TextNode
+	TextNode,
 }
 
 impl From<Box<dyn Node>> for DomNodeType {
@@ -255,7 +260,6 @@ impl std::fmt::Display for DomNodeType {
 A node in the DOM tree. Elements, Comments, and Text are all types of nodes, but only Elements can be branch nodes with children of their own.
  */
 pub trait Node: dyn_clone::DynClone + std::fmt::Debug + std::fmt::Display + ToString {
-
 	/**
 	Returns the text content of the node. For a Comment, CData, or Text node, this is just the comment or text string. For an Element, this will return *all* text nodes (including from child elements, recursive scan) as a single string, or an empty string if this element has no child text nodes
 	 */
@@ -394,15 +398,11 @@ pub fn node_eq(n1: &Box<dyn Node>, n2: &Box<dyn Node>) -> bool {
 		return false;
 	}
 	return match t1 {
-		DomNodeType::CDataNode =>
-			n1.as_cdata().unwrap() == n2.as_cdata().unwrap(),
-		DomNodeType::CommentNode =>
-			n1.as_comment().unwrap() == n2.as_comment().unwrap(),
-		DomNodeType::ElementNode =>
-			n1.as_element().unwrap() == n2.as_element().unwrap(),
-		DomNodeType::TextNode =>
-			n1.as_text().unwrap() == n2.as_text().unwrap()
-	}
+		DomNodeType::CDataNode => n1.as_cdata().unwrap() == n2.as_cdata().unwrap(),
+		DomNodeType::CommentNode => n1.as_comment().unwrap() == n2.as_comment().unwrap(),
+		DomNodeType::ElementNode => n1.as_element().unwrap() == n2.as_element().unwrap(),
+		DomNodeType::TextNode => n1.as_text().unwrap() == n2.as_text().unwrap(),
+	};
 }
 
 /// Represents an XML element with a name, text content, attributes, xmlns namespace (with optional prefix), and children.
@@ -418,7 +418,7 @@ pub struct Element {
 	/// optional xmlns (if xmlns_prefix is None then the xmlns is default namespace)
 	xmlns_prefix: Option<String>,
 	/// xmlns definitions for this element, if any
-	xmlns_context: HashMap<String, String>
+	xmlns_context: HashMap<String, String>,
 }
 
 impl Element {
@@ -432,12 +432,9 @@ impl Element {
 	* *xmlns_prefix*: optional namespace prefix. If `xmlns` is not `None` but `xmlns_prefix` is `None`, then this element will set it's xmlns as the default xlmns for it and its children. Note that this will override any xmlns definitions in the attributes
 	* *children*: optional list of child nodes to add to this element
 	 */
-	pub fn new<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(
-		name: impl Into<String>, text: Option<String>,
-		attributes: Option<HashMap<TEXT1, TEXT2>>,
-		xmlns: Option<String>,
-		xmlns_prefix: Option<String>,
-		children: Option<Vec<Box<dyn Node>>>
+	pub fn new<TEXT1: Into<String> + Clone, TEXT2: Into<String> + Clone>(
+		name: impl Into<String>, text: Option<String>, attributes: Option<HashMap<TEXT1, TEXT2>>,
+		xmlns: Option<String>, xmlns_prefix: Option<String>, children: Option<Vec<Box<dyn Node>>>,
 	) -> Result<Self, KissXmlError> {
 		// sanity check
 		let name = name.into();
@@ -445,14 +442,14 @@ impl Element {
 		// first, convert attributes to <String,String> map
 		let mut attrs: HashMap<String, String> = HashMap::new();
 		match attributes {
-			None => {}
+			None => {},
 			Some(attr_map) => {
 				for (k, v) in attr_map.iter() {
 					let n: String = k.clone().into();
 					Element::check_attr_name(n.as_str())?;
 					attrs.insert(n, v.clone().into());
 				}
-			}
+			},
 		}
 		// xmlns check
 		let mut xmlns = xmlns;
@@ -460,38 +457,38 @@ impl Element {
 			match &xmlns_prefix {
 				None => {
 					// default xmlns
-					xmlns = match attrs.get("xmlns"){
+					xmlns = match attrs.get("xmlns") {
 						None => None,
-						Some(ns) => Some(ns.to_string())
+						Some(ns) => Some(ns.to_string()),
 					}
 				},
 				Some(prefix) => {
 					// prefixed xmlns
-					xmlns = match attrs.get(&format!("xmlns:{prefix}")){
+					xmlns = match attrs.get(&format!("xmlns:{prefix}")) {
 						None => None,
-						Some(ns) => Some(ns.to_string())
+						Some(ns) => Some(ns.to_string()),
 					}
-				}
+				},
 			};
 		}
 		// set the XML NS from the attributes and provided args
 		let mut elem = Self {
-			name: name,
+			name,
 			child_nodes: Vec::new(),
 			xmlns_context: Element::xmlns_context_from_attributes(&attrs),
 			attributes: attrs,
 			xmlns: xmlns.map(|s| s.to_string()),
-			xmlns_prefix: xmlns_prefix.map(|s| s.to_string())
+			xmlns_prefix: xmlns_prefix.map(|s| s.to_string()),
 		};
 		// finally, add children
 		// (using the append*(...) functions in case of default namespace inheritance)
 		match text {
-			None => {}
-			Some(t) => elem.append(Text::new(t))
+			None => {},
+			Some(t) => elem.append(Text::new(t)),
 		}
 		match children {
 			None => {},
-			Some(child_vec) => elem.append_all(child_vec)
+			Some(child_vec) => elem.append_all(child_vec),
 		};
 		return Ok(elem);
 	}
@@ -499,10 +496,7 @@ impl Element {
 	pub fn new_from_name(name: &str) -> Result<Self, KissXmlError> {
 		// sanity check
 		Element::check_elem_name(name)?;
-		Ok(Self {
-			name: name.to_string(),
-			..Default::default()
-		})
+		Ok(Self { name: name.to_string(), ..Default::default() })
 	}
 	/** Creates a new Element with the specified name and attributes.
 	# Example
@@ -518,12 +512,14 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>) -> Result<Self, KissXmlError> {
+	pub fn new_with_attributes<TEXT1: Into<String> + Clone, TEXT2: Into<String> + Clone>(
+		name: &str, attributes: HashMap<TEXT1, TEXT2>,
+	) -> Result<Self, KissXmlError> {
 		Self::new(name, None, Some(attributes), None, None, None)
 	}
 	/// Creates a new Element with the specified name and text content
 	pub fn new_with_text(name: &str, text: impl Into<String>) -> Result<Self, KissXmlError> {
-		Self::new(name, Some(text.into()), Option::<HashMap<String,String>>::None, None, None, None)
+		Self::new(name, Some(text.into()), Option::<HashMap<String, String>>::None, None, None, None)
 	}
 	/** Creates a new Element with the specified name, attributes, and text.
 	# Example
@@ -543,7 +539,9 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_text<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, text: impl Into<String>) -> Result<Self, KissXmlError> {
+	pub fn new_with_attributes_and_text<TEXT1: Into<String> + Clone, TEXT2: Into<String> + Clone>(
+		name: &str, attributes: HashMap<TEXT1, TEXT2>, text: impl Into<String>,
+	) -> Result<Self, KissXmlError> {
 		Self::new(name, Some(text.into()), Some(attributes), None, None, None)
 	}
 	/**
@@ -570,7 +568,9 @@ impl Element {
 	}
 	```
 	 */
-	pub fn new_with_attributes_and_children<TEXT1: Into<String>+Clone, TEXT2: Into<String>+Clone>(name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>) -> Result<Self, KissXmlError> {
+	pub fn new_with_attributes_and_children<TEXT1: Into<String> + Clone, TEXT2: Into<String> + Clone>(
+		name: &str, attributes: HashMap<TEXT1, TEXT2>, children: Vec<Box<dyn Node>>,
+	) -> Result<Self, KissXmlError> {
 		Self::new(name, None, Some(attributes), None, None, Some(children))
 	}
 
@@ -596,7 +596,7 @@ impl Element {
 	```
 	 */
 	pub fn new_with_children(name: &str, children: Vec<Box<dyn Node>>) -> Result<Self, KissXmlError> {
-		Self::new(name, None, Option::<HashMap<String,String>>::None, None, None, Some(children))
+		Self::new(name, None, Option::<HashMap<String, String>>::None, None, None, Some(children))
 	}
 	/** checks the element's attributes for xmlns definitions
 	Note that the default xmlns (if present) is saved as prefix ""
@@ -631,18 +631,18 @@ impl Element {
 	Returns the default namespace of this element, or `None` if it does not have a default namespace. Default namespaces do not use prefixes and are inherited by the element's children.
 	 */
 	pub fn default_namespace(&self) -> Option<String> {
-		match self.xmlns_prefix{
+		match self.xmlns_prefix {
 			None => self.xmlns.clone(),
-			Some(_) => None
+			Some(_) => None,
 		}
 	}
 	/**
 	This is the tag name as it will appear in serialized XML. If this element has an xmlns prefix, then this returns prefix:name, otherwise it just returns the name
 	*/
 	pub fn tag_name(&self) -> String {
-		match &self.xmlns_prefix{
+		match &self.xmlns_prefix {
 			None => self.name.clone(),
-			Some(prefix) => format!("{}:{}", prefix, self.name)
+			Some(prefix) => format!("{}:{}", prefix, self.name),
 		}
 	}
 	/**
@@ -682,7 +682,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> impl Iterator<Item = &Element>{
+	pub fn elements_by_namespace(&self, namespace: Option<&str>) -> impl Iterator<Item = &Element> {
 		let ns = namespace.map(|s| s.to_string());
 		self.child_elements().filter(move |c| c.xmlns == ns)
 	}
@@ -718,7 +718,7 @@ impl Element {
 	}
 	```
 	 */
-	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> impl Iterator<Item = &mut Element>{
+	pub fn elements_by_namespace_mut(&mut self, namespace: Option<&str>) -> impl Iterator<Item = &mut Element> {
 		let ns = namespace.map(|s| s.to_string());
 		self.child_elements_mut().filter(move |c| c.xmlns == ns)
 	}
@@ -751,7 +751,7 @@ impl Element {
 		Ok(())
 	}
 	 */
-	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) ->  impl Iterator<Item = &Element>{
+	pub fn elements_by_namespace_prefix(&self, prefix: Option<&str>) -> impl Iterator<Item = &Element> {
 		let pfx = prefix.map(|p| p.to_string());
 		self.child_elements().filter(move |c| c.xmlns_prefix == pfx)
 	}
@@ -787,52 +787,52 @@ impl Element {
 		Ok(())
 	}
 	 */
-	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) ->  impl Iterator<Item = &mut Element>{
+	pub fn elements_by_namespace_prefix_mut(&mut self, prefix: Option<&str>) -> impl Iterator<Item = &mut Element> {
 		let pfx = prefix.map(|p| p.to_string());
 		self.child_elements_mut().filter(move |c| c.xmlns_prefix == pfx)
 	}
 	/** Gets any and all xmlns prefixes defined in this element (does not include prefix-less default namespace, nor prefixes inherited from a parent element) */
 	pub fn namespace_prefixes(&self) -> Option<HashMap<String, String>> {
 		let prefixes = Self::xmlns_context_from_attributes(&self.attributes);
-		if prefixes.is_empty() {
-			None
-		} else {
-			Some(prefixes)
-		}
+		if prefixes.is_empty() { None } else { Some(prefixes) }
 	}
 	/** Gets any and all xmlns prefixes relevant to this element. This includes both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	pub(crate) fn get_namespace_context(&self) -> HashMap<String, String> {self.xmlns_context.clone()}
+	pub(crate) fn get_namespace_context(&self) -> HashMap<String, String> {
+		self.xmlns_context.clone()
+	}
 	/** Sets any and all xmlns prefixes this element should inherit. This must include both those that are defined by this element as well as those defined by parent elements up the DOM tree. */
-	pub(crate) fn set_namespace_context(&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>) {
+	pub(crate) fn set_namespace_context(
+		&mut self, parent_default_namespace: Option<String>, parent_prefixes: Option<HashMap<String, String>>,
+	) {
 		// inherit default namespace unless this element also defines one
 		match self.xmlns_prefix {
 			None => {
 				match self.default_namespace() {
 					None => self.xmlns = parent_default_namespace,
-					Some(_) => {/* do nothing */}
+					Some(_) => { /* do nothing */ },
 				}
-			}
-			Some(_) => {/* do nothing */}
+			},
+			Some(_) => { /* do nothing */ },
 		}
 		// add prefixed namespaces (except where already defined locally)
 		match parent_prefixes {
-			None => {}
+			None => {},
 			Some(prefixes) => {
 				for (prefix, ns) in prefixes {
-					if ! self.xmlns_context.contains_key(prefix.as_str()) {
+					if !self.xmlns_context.contains_key(prefix.as_str()) {
 						let _ = &self.xmlns_context.insert(prefix, ns);
 					}
 				}
-			}
+			},
 		}
 		// set this namespace if a prefix was specified without xmlns def attribute
 		if self.xmlns.is_none() {
 			match &self.xmlns_prefix {
-				None => {}
+				None => {},
 				Some(prefix) => {
 					// get prefix namespace from context
 					self.xmlns = self.xmlns_context.get(prefix).map(String::clone);
-				}
+				},
 			};
 		}
 	}
@@ -841,42 +841,34 @@ impl Element {
 		self.child_nodes.reverse();
 	}
 	/** Returns a list of al child elements as an iterator */
-	pub fn child_elements(&self) ->  impl Iterator<Item = &Element>{
-		self.child_nodes.iter()
-			.filter(|n| n.is_element())
-			.map(|n| n.as_element().expect("logic error"))
+	pub fn child_elements(&self) -> impl Iterator<Item = &Element> {
+		self.child_nodes.iter().filter(|n| n.is_element()).map(|n| n.as_element().expect("logic error"))
 	}
 	/** Returns a list of al child elements as an iterator */
-	pub fn child_elements_mut(&mut self) ->  impl Iterator<Item = &mut Element>{
-		self.child_nodes.iter_mut()
-			.filter(|n| n.is_element())
-			.map(|n| n.as_element_mut().expect("logic error"))
+	pub fn child_elements_mut(&mut self) -> impl Iterator<Item = &mut Element> {
+		self.child_nodes.iter_mut().filter(|n| n.is_element()).map(|n| n.as_element_mut().expect("logic error"))
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator (non-recursive). For a recursive iterator of all children and children-of-children, use [all_children()](all_children())*/
-	pub fn children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
+	pub fn children(&self) -> impl Iterator<Item = &Box<dyn Node>> {
 		self.child_nodes.iter()
 	}
 	/** Returns a recusive iterator to all child nodes (elements, comments, and text components) */
-	pub fn all_children(&self) -> impl Iterator<Item = &Box<dyn Node>>{
+	pub fn all_children(&self) -> impl Iterator<Item = &Box<dyn Node>> {
 		self.search(|_| true)
 	}
 	/** Returns a list of al child nodes (elements, comments, and text components) as an iterator */
-	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>>{
+	pub fn children_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn Node>> {
 		self.child_nodes.iter_mut()
 	}
 	/** Recursively iterates through all child nodes, as well as children of children. Iteration order is arbitrary and not sequential through the DOM. */
 	pub fn children_recursive(&self) -> Box<dyn Iterator<Item = &Box<dyn Node>> + '_> {
-		Box::new(
-			self.child_nodes.iter()
-			.chain(
-				self.child_elements().map(|e| e.children_recursive()
-				).flatten()
-			)
-		)
+		Box::new(self.child_nodes.iter().chain(self.child_elements().map(|e| e.children_recursive()).flatten()))
 	}
 
 	/** Deletes all child nodes from this element */
-	pub fn clear_children(&mut self) {self.child_nodes.clear()}
+	pub fn clear_children(&mut self) {
+		self.child_nodes.clear()
+	}
 	/** Replaces this element's content (children) with the given text. **This will delete any child elements and comments from this element!** */
 	pub fn set_text(&mut self, text: impl Into<String>) {
 		self.clear_children();
@@ -945,7 +937,7 @@ impl Element {
 
 	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
-	pub fn elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
+	pub fn elements_by_name(&self, name: impl Into<String>) -> impl Iterator<Item = &Element> {
 		let n: String = name.into();
 		self.child_elements().filter(move |c| c.name == n)
 	}
@@ -953,7 +945,7 @@ impl Element {
 
 	This search is non-recursive, meaning that it only returns children of this element, not children-of-children. For a recursive search, use [search_elements_by_name(...)](search_elements_by_name()) instead.
 	 */
-	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) ->  impl Iterator<Item = &mut Element>{
+	pub fn elements_by_name_mut(&mut self, name: impl Into<String>) -> impl Iterator<Item = &mut Element> {
 		let n: String = name.into();
 		self.child_elements_mut().filter(move |c| c.name == n)
 	}
@@ -967,7 +959,9 @@ impl Element {
 		self.attributes.get(&n)
 	}
 	/** Sets the value of an attribute for this Element by name. */
-	pub fn set_attr(&mut self, attr_name: impl Into<String>, value: impl Into<String>) -> Result<(), InvalidAttributeName> {
+	pub fn set_attr(
+		&mut self, attr_name: impl Into<String>, value: impl Into<String>,
+	) -> Result<(), InvalidAttributeName> {
 		let n: String = attr_name.into();
 		Element::check_attr_name(n.as_str())?;
 		let v: String = value.into();
@@ -975,15 +969,12 @@ impl Element {
 		Ok(())
 	}
 
-
 	/// singleton regex matcher
 	const ATTR_NAME_CHECKER_SINGLETON: OnceCell<Regex> = OnceCell::new();
 	/// Checks if an attribute name is valid
 	fn check_attr_name(name: &str) -> Result<(), InvalidAttributeName> {
 		let singleton = Element::ATTR_NAME_CHECKER_SINGLETON;
-		let checker = singleton.get_or_init(
-			|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap()
-		);
+		let checker = singleton.get_or_init(|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap());
 		if checker.is_match(name) {
 			Ok(())
 		} else {
@@ -995,9 +986,7 @@ impl Element {
 	/// Checks if an attribute name is valid
 	fn check_elem_name(name: &str) -> Result<(), InvalidElementName> {
 		let singleton = Element::NAME_CHECKER_SINGLETON;
-		let checker = singleton.get_or_init(
-			|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap()
-		);
+		let checker = singleton.get_or_init(|| Regex::new(r#"^[_a-zA-Z]\S*$"#).unwrap());
 		if checker.is_match(name) {
 			Ok(())
 		} else {
@@ -1042,11 +1031,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Box<dyn Node>> + 'a> where P: FnMut(&&Box<dyn Node>) -> bool + 'a {
+	pub fn search<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Box<dyn Node>> + 'a>
+	where
+		P: FnMut(&&Box<dyn Node>) -> bool + 'a,
+	{
 		// recursive
-		Box::new(
-			self.children_recursive().filter(predicate)
-		)
+		Box::new(self.children_recursive().filter(predicate))
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements matching the given predicate.
@@ -1077,13 +1067,12 @@ impl Element {
 	}
 	```
 	 */
-	pub fn search_elements<'a, P>(&'a self, predicate: P) ->  Box<dyn Iterator<Item = &'a Element> + 'a> where P: FnMut(&&Element) -> bool + 'a {
+	pub fn search_elements<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Element> + 'a>
+	where
+		P: FnMut(&&Element) -> bool + 'a,
+	{
 		// recursive
-		Box::new(
-			self.search(|n| n.is_element())
-				.map(|n| n.as_element().expect("logic error"))
-				.filter(predicate)
-		)
+		Box::new(self.search(|n| n.is_element()).map(|n| n.as_element().expect("logic error")).filter(predicate))
 	}
 	/**
 	Performs a recursive search of all child elements (and all children of child elements, etc), returning an iterator of all elements with the given name (regardless of namespace).
@@ -1113,30 +1102,28 @@ impl Element {
 		Ok(())
 	}
 	```
- 	*/
-	pub fn search_elements_by_name(&self, name: impl Into<String>) ->  impl Iterator<Item = &Element>{
+	 */
+	pub fn search_elements_by_name(&self, name: impl Into<String>) -> impl Iterator<Item = &Element> {
 		// recursive
 		let n: String = name.into();
 		self.search_elements(move |e| e.name() == n)
 	}
 	/** Performs a recursive search of all the text nodes under this element and returns all text nodes that match the given predicate as an iterator */
-	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Text> + 'a> where P: Fn(&&Text) -> bool + 'a {
+	pub fn search_text<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Text> + 'a>
+	where
+		P: Fn(&&Text) -> bool + 'a,
+	{
 		// recursive
-		Box::new(
-			self.search(|n| n.is_text())
-			.map(|n| n.as_text().expect("logic error"))
-			.filter(predicate)
-		)
+		Box::new(self.search(|n| n.is_text()).map(|n| n.as_text().expect("logic error")).filter(predicate))
 	}
 
 	/** Performs a recursive search of all the comments under this element and returns all comment nodes that match the given predicate as an iterator */
-	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Comment> + 'a> where P: Fn(&&Comment) -> bool + 'a {
+	pub fn search_comments<'a, P>(&'a self, predicate: P) -> Box<dyn Iterator<Item = &'a Comment> + 'a>
+	where
+		P: Fn(&&Comment) -> bool + 'a,
+	{
 		// recursive
-		Box::new(
-			self.search(|n| n.is_comment())
-				.map(|n| n.as_comment().expect("logic error"))
-				.filter(predicate)
-		)
+		Box::new(self.search(|n| n.is_comment()).map(|n| n.as_comment().expect("logic error")).filter(predicate))
 	}
 	/**
 	Appends the given node to the children of this element.
@@ -1171,37 +1158,40 @@ impl Element {
 		self.cleanup_text_nodes();
 	}
 	/** Applies this element's context to the given child */
-	fn apply_xmlns_context_to_child_node(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, node: &mut Box<dyn Node>) {
+	fn apply_xmlns_context_to_child_node(
+		df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, node: &mut Box<dyn Node>,
+	) {
 		let is_element = node.is_element();
 		if is_element {
 			Self::apply_xmlns_context_to_child_element(
-				df_xmlns, xmlns_context,
-				node.as_element_mut().expect("logic error")
+				df_xmlns,
+				xmlns_context,
+				node.as_element_mut().expect("logic error"),
 			);
 		}
 	}
 	/** Applies the default xmlns and prefixed xmlns context to the given child */
-	fn apply_xmlns_context_to_child_element(df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, child: &mut Element) {
+	fn apply_xmlns_context_to_child_element(
+		df_xmlns: Option<String>, xmlns_context: HashMap<String, String>, child: &mut Element,
+	) {
 		// update xmlns prefix context if we just added an element
-		child.set_namespace_context(
-			df_xmlns,
-			Some(xmlns_context)
-		);
+		child.set_namespace_context(df_xmlns, Some(xmlns_context));
 	}
 	/** Discards merges sequential text nodes and then whitespace-only text nodes */
 	fn cleanup_text_nodes(&mut self) {
 		// check if there are children
-		if self.child_nodes.len() == 0 {return;}
+		if self.child_nodes.len() == 0 {
+			return;
+		}
 		// merge sequential text nodes (back-to-front order for performance)
 		let mut index = self.child_nodes.len() - 1;
 		while index > 0 {
-			if self.child_nodes[index].is_text()
-			&& self.child_nodes[index-1].is_text() {
+			if self.child_nodes[index].is_text() && self.child_nodes[index - 1].is_text() {
 				// index-1 and index are text nodes, merge them
 				let back = self.child_nodes.remove(index);
-				let front = self.child_nodes.remove(index-1);
+				let front = self.child_nodes.remove(index - 1);
 				let merged = Text::concat(front.as_text().expect("logic error"), back.as_text().expect("logic error"));
-				self.child_nodes.insert(index-1, merged.boxed());
+				self.child_nodes.insert(index - 1, merged.boxed());
 			}
 			index -= 1;
 		}
@@ -1210,11 +1200,13 @@ impl Element {
 		let mut index = self.child_nodes.len() - 1;
 		loop {
 			if self.child_nodes[index].is_text()
-				&& self.child_nodes[index]
-				.as_text().expect("logic error").is_whitespace() {
+				&& self.child_nodes[index].as_text().expect("logic error").is_whitespace()
+			{
 				self.child_nodes.remove(index);
 			}
-			if index == 0 {break;}
+			if index == 0 {
+				break;
+			}
 			index = index.wrapping_sub(1);
 		}
 		// Done.
@@ -1260,8 +1252,9 @@ impl Element {
 		// then apply the xmlns context to the elements
 		for i in elem_indices {
 			Self::apply_xmlns_context_to_child_node(
-				self.default_namespace(), self.xmlns_context.clone(),
-			&mut self.child_nodes[i]
+				self.default_namespace(),
+				self.xmlns_context.clone(),
+				&mut self.child_nodes[i],
 			);
 		}
 		// clean-up text nodes
@@ -1277,8 +1270,9 @@ impl Element {
 		// Note: if this is an element, set the namespace context
 		self.child_nodes.insert(index, node.boxed());
 		Self::apply_xmlns_context_to_child_node(
-			self.default_namespace(), self.xmlns_context.clone(),
-			self.child_nodes.last_mut().unwrap()
+			self.default_namespace(),
+			self.xmlns_context.clone(),
+			self.child_nodes.last_mut().unwrap(),
 		);
 		// clean-up text nodes
 		self.cleanup_text_nodes();
@@ -1325,8 +1319,11 @@ impl Element {
 	}
 	```
 	 */
-	pub fn remove_all<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
-		let mut count =  self.remove_by(predicate);
+	pub fn remove_all<P>(&mut self, predicate: &P) -> usize
+	where
+		P: Fn(&Box<dyn Node>) -> bool,
+	{
+		let mut count = self.remove_by(predicate);
 		for e in self.child_elements_mut() {
 			count += e.remove_all(predicate);
 		}
@@ -1337,14 +1334,17 @@ impl Element {
 
 	This function is not recursive. For recursive removal, use [remove_all(...)](remove_all()) instead.
 	 */
-	pub fn remove_by<P>(&mut self, predicate: &P) -> usize where P: Fn(&Box<dyn Node>) -> bool {
+	pub fn remove_by<P>(&mut self, predicate: &P) -> usize
+	where
+		P: Fn(&Box<dyn Node>) -> bool,
+	{
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
 			if predicate(&self.child_nodes[i]) {
 				rm_indices.push(i);
 			}
 		}
-		let count =  rm_indices.len();
+		let count = rm_indices.len();
 		for i in rm_indices {
 			self.child_nodes.remove(i);
 		}
@@ -1355,7 +1355,9 @@ impl Element {
 		// first, index the child elements
 		let mut elems: Vec<usize> = Vec::new();
 		for i in 0..self.child_nodes.len() {
-			if self.child_nodes[i].is_element(){ elems.push(i); }
+			if self.child_nodes[i].is_element() {
+				elems.push(i);
+			}
 		}
 		// now remove the requested element
 		if index >= elems.len() {
@@ -1367,18 +1369,19 @@ impl Element {
 	/** Removes all child elements matching the given predicate function, returning the number of removed elements.
 
 	This removal is non-recursive, meaning that it can only remove children of this element, not children-of-children. For a recursive removal, use [remove_all_elements(...)](remove_all_elements()) instead. */
-	pub fn remove_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
+	pub fn remove_elements<P>(&mut self, predicate: P) -> usize
+	where
+		P: Fn(&Element) -> bool,
+	{
 		let mut rm_indices: Vec<usize> = Vec::new();
 		for i in (0..self.child_nodes.len()).rev() {
 			if self.child_nodes[i].is_element() {
-				if predicate(
-					self.child_nodes[i].as_element().expect("logic error")
-				) {
+				if predicate(self.child_nodes[i].as_element().expect("logic error")) {
 					rm_indices.push(i);
 				}
 			}
 		}
-		let count =  rm_indices.len();
+		let count = rm_indices.len();
 		for i in rm_indices {
 			self.child_nodes.remove(i);
 		}
@@ -1389,14 +1392,15 @@ impl Element {
 
 	This function is recursive, meaning that it will remove matching child nodes, child nodes of children, child nodes of children's children, etc. For non-recursive removal, use [remove_by(...)](remove_by()) instead.
 	 */
-	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize where P: Fn(&Element) -> bool {
-		let new_pred = |n: &Box<dyn Node>| {
-			match n.is_element(){
-				true => predicate(n.as_element().unwrap()),
-				false => false
-			}
+	pub fn remove_all_elements<P>(&mut self, predicate: P) -> usize
+	where
+		P: Fn(&Element) -> bool,
+	{
+		let new_pred = |n: &Box<dyn Node>| match n.is_element() {
+			true => predicate(n.as_element().unwrap()),
+			false => false,
 		};
-		let mut count =  self.remove_by(&new_pred);
+		let mut count = self.remove_by(&new_pred);
 		for e in self.child_elements_mut() {
 			count += e.remove_all(&new_pred);
 		}
@@ -1414,7 +1418,9 @@ impl Element {
 	/// (inline = true to bypass pretty-printing
 	fn to_string_with_prefix_and_indent(&self, prefix: &str, indent: &str, mut inline: bool) -> String {
 		let mut out = String::new();
-		if !inline {out.push_str(prefix)}
+		if !inline {
+			out.push_str(prefix)
+		}
 		// tag name
 		let tag_name = self.tag_name();
 		out.push_str("<");
@@ -1422,7 +1428,7 @@ impl Element {
 
 		// attributes
 		let mut attrs: Vec<(&String, &String)> = self.attributes().iter().map(|kv| (kv.0, kv.1)).collect();
-		attrs.sort_by(crate::attribute_order);  // ensure consistent and predictable attribute ordering
+		attrs.sort_by(crate::attribute_order); // ensure consistent and predictable attribute ordering
 		for (k, v) in attrs {
 			out.push_str(" ");
 			out.push_str(k.as_str());
@@ -1454,7 +1460,9 @@ impl Element {
 			*/
 			// check if this is a mixed element
 			inline = inline || self.child_nodes.iter().any(|n| n.is_text());
-			if !inline{out.push('\n');}
+			if !inline {
+				out.push('\n');
+			}
 			// prettify variables
 			let mut next_prefix = String::from(prefix);
 			next_prefix.push_str(indent);
@@ -1466,29 +1474,35 @@ impl Element {
 				} else if c.is_element() {
 					// child element, recurse
 					out.push_str(
-						c.as_element().expect("logic error")
-							.to_string_with_prefix_and_indent(next_prefix.as_str(), indent, inline).as_str()
+						c.as_element()
+							.expect("logic error")
+							.to_string_with_prefix_and_indent(next_prefix.as_str(), indent, inline)
+							.as_str(),
 					);
 				} else {
 					// other
-					if !(inline) {out.push_str(next_prefix.as_str());}
+					if !(inline) {
+						out.push_str(next_prefix.as_str());
+					}
 					out.push_str(c.to_string_with_indent(indent).as_str());
 				}
-				if !inline {out.push('\n');}
+				if !inline {
+					out.push('\n');
+				}
 			}
 			// closing tag
-			if !inline {out.push_str(prefix);}
+			if !inline {
+				out.push_str(prefix);
+			}
 			out.push_str("</");
 			out.push_str(tag_name.as_str());
 			out.push_str(">");
 		}
 		return out;
 	}
-
 }
 
 impl Node for Element {
-
 	fn text(&self) -> String {
 		// Note: this is recursive, but only elements and text nodes
 		let mut builder = String::new();
@@ -1516,37 +1530,64 @@ impl Node for Element {
 		false
 	}
 
-	fn as_element(&self) -> Result<&Element, TypeCastError> {Ok(&self)}
+	fn as_element(&self) -> Result<&Element, TypeCastError> {
+		Ok(&self)
+	}
 
-	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as Comment"))
+	}
 
-	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+	fn as_text(&self) -> Result<&Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as Text"))
+	}
 
-	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as CData"))
+	}
 
-	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Ok(self)}
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {
+		Ok(self)
+	}
 
-	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Comment"))}
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as Comment"))
+	}
 
-	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as Text"))}
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as Text"))
+	}
 
-	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Element as CData"))}
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Element as CData"))
+	}
 
-	fn as_node(&self) -> &dyn Node {self}
+	fn as_node(&self) -> &dyn Node {
+		self
+	}
 
-	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+	fn as_node_mut(&mut self) -> &mut dyn Node {
+		self
+	}
 
-	fn as_any(&self) -> &dyn Any {self}
+	fn as_any(&self) -> &dyn Any {
+		self
+	}
 
-	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
+	}
 
 	fn to_string_with_indent(&self, indent: &str) -> String {
-		match crate::validate_indent(indent){
+		match crate::validate_indent(indent) {
 			Ok(_) => self.to_string_with_prefix_and_indent("", indent, false),
 			Err(_) => {
-				eprintln!("WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead", indent);
+				eprintln!(
+					"WARNING: {:?} is not a valid indentation. Must be either 1 tab or any number of spaces. The default of 2 spaces will be used instead",
+					indent
+				);
 				self.to_string_with_prefix_and_indent("", "  ", false)
-			}
+			},
 		}
 	}
 
@@ -1593,10 +1634,12 @@ impl PartialOrd for Element {
 
 impl PartialEq<Self> for Element {
 	fn eq(&self, other: &Self) -> bool {
-		if self.name == other.name && self.xmlns == other.xmlns
+		if self.name == other.name
+			&& self.xmlns == other.xmlns
 			&& self.xmlns_prefix == other.xmlns_prefix
 			&& self.attributes == other.attributes
-			&& self.child_nodes.len() == other.child_nodes.len() {
+			&& self.child_nodes.len() == other.child_nodes.len()
+		{
 			for i in 0..self.child_nodes.len() {
 				if !node_eq(&self.child_nodes[i], &other.child_nodes[i]) {
 					return false;
@@ -1615,7 +1658,6 @@ impl Hash for Element {
 	}
 }
 
-
 impl std::fmt::Display for Element {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.to_string_with_indent("  "))
@@ -1632,7 +1674,7 @@ impl std::fmt::Debug for Element {
 #[derive(Clone)]
 pub struct Text {
 	/// The content of this Text node
-	pub content: String
+	pub content: String,
 }
 
 /// singleton regex matcher
@@ -1642,7 +1684,7 @@ impl Text {
 	/** Construct a new Text node from the provided string-like object */
 	pub fn new(text: impl Into<String>) -> Self {
 		let content: String = text.into();
-		Self{content}
+		Self { content }
 	}
 
 	/** Returns a new Text node that is equivalent to this one plus the given Text node */
@@ -1650,7 +1692,7 @@ impl Text {
 		let mut content = String::new();
 		content.push_str(self.content.as_str());
 		content.push_str(other.content.as_str());
-		Text{content}
+		Text { content }
 	}
 
 	/// checks if this Text node contains only whitespace
@@ -1674,7 +1716,6 @@ impl From<String> for Text {
 }
 
 impl Node for Text {
-
 	fn text(&self) -> String {
 		self.content.clone()
 	}
@@ -1695,29 +1736,53 @@ impl Node for Text {
 		false
 	}
 
-	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
+	fn as_element(&self) -> Result<&Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as Element"))
+	}
 
-	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as Comment"))
+	}
 
-	fn as_text(&self) -> Result<&Text, TypeCastError> {Ok(&self)}
+	fn as_text(&self) -> Result<&Text, TypeCastError> {
+		Ok(&self)
+	}
 
-	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as CData"))}
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as CData"))
+	}
 
-	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Element"))}
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as Element"))
+	}
 
-	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as Comment"))}
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as Comment"))
+	}
 
-	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Ok(self)}
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {
+		Ok(self)
+	}
 
-	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Text as CData"))}
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Text as CData"))
+	}
 
-	fn as_node(&self) -> &dyn Node {self}
+	fn as_node(&self) -> &dyn Node {
+		self
+	}
 
-	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+	fn as_node_mut(&mut self) -> &mut dyn Node {
+		self
+	}
 
-	fn as_any(&self) -> &dyn Any {self}
+	fn as_any(&self) -> &dyn Any {
+		self
+	}
 
-	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
+	}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
 		crate::text_escape(self.content.clone())
@@ -1746,7 +1811,6 @@ impl Hash for Text {
 	}
 }
 
-
 impl std::fmt::Display for Text {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.to_string_with_indent("  "))
@@ -1761,9 +1825,9 @@ impl std::fmt::Debug for Text {
 
 /// Represents an XML comment
 #[derive(Clone)]
-pub struct Comment{
+pub struct Comment {
 	/// The text of the comment
-	comment: String
+	comment: String,
 }
 
 impl Comment {
@@ -1794,7 +1858,6 @@ impl Comment {
 }
 
 impl Node for Comment {
-
 	fn text(&self) -> String {
 		self.comment.clone()
 	}
@@ -1815,29 +1878,53 @@ impl Node for Comment {
 		false
 	}
 
-	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
+	fn as_element(&self) -> Result<&Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as Element"))
+	}
 
-	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Ok(&self)}
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
+		Ok(&self)
+	}
 
-	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+	fn as_text(&self) -> Result<&Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as Text"))
+	}
 
-	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as CData"))
+	}
 
-	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Element"))}
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as Element"))
+	}
 
-	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Ok(self)}
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {
+		Ok(self)
+	}
 
-	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as Text"))}
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as Text"))
+	}
 
-	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Err(TypeCastError::new("Cannot cast Comment as CData"))}
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast Comment as CData"))
+	}
 
-	fn as_node(&self) -> &dyn Node {self}
+	fn as_node(&self) -> &dyn Node {
+		self
+	}
 
-	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+	fn as_node_mut(&mut self) -> &mut dyn Node {
+		self
+	}
 
-	fn as_any(&self) -> &dyn Any {self}
+	fn as_any(&self) -> &dyn Any {
+		self
+	}
 
-	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
+	}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
 		format!("<!--{}-->", self.comment)
@@ -1892,9 +1979,9 @@ impl std::fmt::Debug for Comment {
 
 /** This struct represents a CData element. CData is text data that should be preserved as-is without escaping or whitespace modification. CData is *not* binary data (though some non-standard uses of XML may store binary data in a CData tag) */
 #[derive(Clone)]
-pub struct CData{
+pub struct CData {
 	/// The content of the cdata
-	cdata: String
+	cdata: String,
 }
 
 impl CData {
@@ -1926,7 +2013,6 @@ impl CData {
 }
 
 impl Node for CData {
-
 	fn text(&self) -> String {
 		self.cdata.clone()
 	}
@@ -1947,29 +2033,53 @@ impl Node for CData {
 		true
 	}
 
-	fn as_element(&self) -> Result<&Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+	fn as_element(&self) -> Result<&Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Element"))
+	}
 
-	fn as_comment(&self) -> Result<&Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+	fn as_comment(&self) -> Result<&Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Comment"))
+	}
 
-	fn as_text(&self) -> Result<&Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+	fn as_text(&self) -> Result<&Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Text"))
+	}
 
-	fn as_cdata(&self) -> Result<&CData, TypeCastError> {Ok(&self)}
+	fn as_cdata(&self) -> Result<&CData, TypeCastError> {
+		Ok(&self)
+	}
 
-	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Element"))}
+	fn as_element_mut(&mut self) -> Result<&mut Element, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Element"))
+	}
 
-	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Comment"))}
+	fn as_comment_mut(&mut self) -> Result<&mut Comment, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Comment"))
+	}
 
-	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {Err(TypeCastError::new("Cannot cast CData as Text"))}
+	fn as_text_mut(&mut self) -> Result<&mut Text, TypeCastError> {
+		Err(TypeCastError::new("Cannot cast CData as Text"))
+	}
 
-	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {Ok(self)}
+	fn as_cdata_mut(&mut self) -> Result<&mut CData, TypeCastError> {
+		Ok(self)
+	}
 
-	fn as_node(&self) -> &dyn Node {self}
+	fn as_node(&self) -> &dyn Node {
+		self
+	}
 
-	fn as_node_mut(&mut self) -> &mut dyn Node {self}
+	fn as_node_mut(&mut self) -> &mut dyn Node {
+		self
+	}
 
-	fn as_any(&self) -> &dyn Any {self}
+	fn as_any(&self) -> &dyn Any {
+		self
+	}
 
-	fn as_any_mut(&mut self) -> &mut dyn Any{self}
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
+	}
 
 	fn to_string_with_indent(&self, _indent: &str) -> String {
 		format!("<![CDATA[{}]]>", self.cdata)
@@ -2022,13 +2132,12 @@ impl std::fmt::Debug for CData {
 	}
 }
 
-
 /** An XML document declaration, ie `<?xml version="1.0" encoding="UTF-8"?>`
 
 `kiss_xml` does not interpret XML document declarations and does not require XML documents to have one. The declaration will simply be copied verbatum. */
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct Declaration {
-	decl_str: String
+	decl_str: String,
 }
 
 impl Declaration {
@@ -2036,8 +2145,8 @@ impl Declaration {
 	pub fn from_str(decl: &str) -> Result<Self, KissXmlError> {
 		// parsing XML declarations is beyond the scope of the kiss_xml crate
 		let buffer: String = decl.trim().to_string();
-		if buffer.starts_with("<?") && buffer.ends_with("?>"){
-			Ok(Self{decl_str: buffer.strip_prefix("<?").unwrap().strip_suffix("?>").unwrap().to_string()})
+		if buffer.starts_with("<?") && buffer.ends_with("?>") {
+			Ok(Self { decl_str: buffer.strip_prefix("<?").unwrap().strip_suffix("?>").unwrap().to_string() })
 		} else {
 			Err(ParsingError::new("Invalid XML declaration syntax").into())
 		}
@@ -2071,7 +2180,7 @@ An XML document type declaration (DTD) defines custom behavior for XML documents
 */
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct DTD {
-	dtd_str: String
+	dtd_str: String,
 }
 
 impl DTD {
@@ -2079,8 +2188,8 @@ impl DTD {
 	pub fn from_string(text: impl Into<String>) -> Result<DTD, KissXmlError> {
 		// parsing DTDs is beyond the scope of the kiss_xml crate
 		let buffer: String = text.into().trim().to_string();
-		if buffer.starts_with("<!DOCTYPE") && buffer.ends_with(">"){
-			Ok(Self{dtd_str: buffer.strip_prefix("<!DOCTYPE").unwrap().strip_suffix(">").unwrap().to_string()})
+		if buffer.starts_with("<!DOCTYPE") && buffer.ends_with(">") {
+			Ok(Self { dtd_str: buffer.strip_prefix("<!DOCTYPE").unwrap().strip_suffix(">").unwrap().to_string() })
 		} else {
 			Err(ParsingError::new("Invalid DTD syntax").into())
 		}

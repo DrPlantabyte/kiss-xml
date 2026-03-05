@@ -30,7 +30,9 @@ pub enum KissXmlError {
 }
 
 impl From<std::io::Error> for KissXmlError {
-	fn from(e: std::io::Error) -> Self {KissXmlError::IOError(e)}
+	fn from(e: std::io::Error) -> Self {
+		KissXmlError::IOError(e)
+	}
 }
 
 impl Display for KissXmlError {
@@ -49,28 +51,29 @@ impl Display for KissXmlError {
 	}
 }
 
-impl std::error::Error for KissXmlError{}
-
+impl std::error::Error for KissXmlError {}
 
 /// Represents an error that occurs during parsing with additional information.
 #[derive(Clone, Debug)]
 pub struct ParsingError {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl ParsingError{
+impl ParsingError {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
 		let mut m = msg.into();
 		// parsing error messages may be nested, make them pretty
 		m = m.trim_start_matches("ParsingError: ").to_string();
-		Self{msg: m}
+		Self { msg: m }
 	}
 }
 
 impl From<ParsingError> for KissXmlError {
-	fn from(e: ParsingError) -> Self {KissXmlError::ParsingError(e)}
+	fn from(e: ParsingError) -> Self {
+		KissXmlError::ParsingError(e)
+	}
 }
 
 impl Display for ParsingError {
@@ -79,24 +82,26 @@ impl Display for ParsingError {
 	}
 }
 
-impl std::error::Error for ParsingError{}
+impl std::error::Error for ParsingError {}
 
 /// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
 #[derive(Clone, Debug)]
 pub struct TypeCastError {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl TypeCastError{
+impl TypeCastError {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<TypeCastError> for KissXmlError {
-	fn from(e: TypeCastError) -> Self {KissXmlError::TypeCastError(e)}
+	fn from(e: TypeCastError) -> Self {
+		KissXmlError::TypeCastError(e)
+	}
 }
 
 impl Display for TypeCastError {
@@ -105,25 +110,26 @@ impl Display for TypeCastError {
 	}
 }
 
-impl std::error::Error for TypeCastError{}
-
+impl std::error::Error for TypeCastError {}
 
 /// Error indicating an attempt to convert a Node to the wrong implementing type (eg turning an Element into a Comment)
 #[derive(Clone, Debug)]
 pub struct DoesNotExistError {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl DoesNotExistError{
+impl DoesNotExistError {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<DoesNotExistError> for KissXmlError {
-	fn from(e: DoesNotExistError) -> Self {KissXmlError::DoesNotExistError(e)}
+	fn from(e: DoesNotExistError) -> Self {
+		KissXmlError::DoesNotExistError(e)
+	}
 }
 
 impl Display for DoesNotExistError {
@@ -134,11 +140,11 @@ impl Display for DoesNotExistError {
 
 impl Default for DoesNotExistError {
 	fn default() -> Self {
-		Self{msg: String::from("requested item not found")}
+		Self { msg: String::from("requested item not found") }
 	}
 }
 
-impl std::error::Error for DoesNotExistError{}
+impl std::error::Error for DoesNotExistError {}
 
 /// Error indicating an attempt to index an array or collection with an invalid index
 #[derive(Clone, Debug)]
@@ -146,47 +152,51 @@ pub struct IndexOutOfBounds {
 	/// The error index
 	pub index: isize,
 	/// optional correct bounds
-	pub bounds: Option<(isize, isize)>
+	pub bounds: Option<(isize, isize)>,
 }
 
-impl IndexOutOfBounds{
+impl IndexOutOfBounds {
 	/// New error with a given index
 	pub fn new(index: isize, bounds: Option<(isize, isize)>) -> Self {
-		Self{index, bounds}
+		Self { index, bounds }
 	}
 }
 
 impl From<IndexOutOfBounds> for KissXmlError {
-	fn from(e: IndexOutOfBounds) -> Self {KissXmlError::IndexOutOfBounds(e)}
+	fn from(e: IndexOutOfBounds) -> Self {
+		KissXmlError::IndexOutOfBounds(e)
+	}
 }
 
 impl Display for IndexOutOfBounds {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self.bounds {
 			Some(b) => write!(f, "Index {} is out of bounds (valid range: {} - {})", &self.index, b.0, b.1),
-			None => write!(f, "Index {} is out of bounds", &self.index)
+			None => write!(f, "Index {} is out of bounds", &self.index),
 		}
 	}
 }
 
-impl std::error::Error for IndexOutOfBounds{}
+impl std::error::Error for IndexOutOfBounds {}
 
 /// Error indicating an attempt to add an attribute with an invalid name (eg contains a space)
 #[derive(Clone, Debug)]
 pub struct InvalidAttributeName {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl InvalidAttributeName{
+impl InvalidAttributeName {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<InvalidAttributeName> for KissXmlError {
-	fn from(e: InvalidAttributeName) -> Self {KissXmlError::InvalidAttributeName(e)}
+	fn from(e: InvalidAttributeName) -> Self {
+		KissXmlError::InvalidAttributeName(e)
+	}
 }
 
 impl Display for InvalidAttributeName {
@@ -195,24 +205,26 @@ impl Display for InvalidAttributeName {
 	}
 }
 
-impl std::error::Error for InvalidAttributeName{}
+impl std::error::Error for InvalidAttributeName {}
 
 /// Error indicating an attempt to create an element with an invalid name (eg contains a space)
 #[derive(Clone, Debug)]
 pub struct InvalidElementName {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl InvalidElementName{
+impl InvalidElementName {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<InvalidElementName> for KissXmlError {
-	fn from(e: InvalidElementName) -> Self {KissXmlError::InvalidElementName(e)}
+	fn from(e: InvalidElementName) -> Self {
+		KissXmlError::InvalidElementName(e)
+	}
 }
 
 impl Display for InvalidElementName {
@@ -221,25 +233,26 @@ impl Display for InvalidElementName {
 	}
 }
 
-impl std::error::Error for InvalidElementName{}
-
+impl std::error::Error for InvalidElementName {}
 
 /// Error indicating an attempt to create a comment or CDATA with invalid content (eg a comment with "-->" inside)
 #[derive(Clone, Debug)]
 pub struct InvalidContent {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl InvalidContent{
+impl InvalidContent {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<InvalidContent> for KissXmlError {
-	fn from(e: InvalidContent) -> Self {KissXmlError::InvalidContent(e)}
+	fn from(e: InvalidContent) -> Self {
+		KissXmlError::InvalidContent(e)
+	}
 }
 
 impl Display for InvalidContent {
@@ -248,25 +261,26 @@ impl Display for InvalidContent {
 	}
 }
 
-impl std::error::Error for InvalidContent{}
-
+impl std::error::Error for InvalidContent {}
 
 /// Error indicating an attempt to do something that is valid XML, but not supprted by KISS-XML
 #[derive(Clone, Debug)]
 pub struct NotSupportedError {
 	/// The error message.
-	pub msg: String
+	pub msg: String,
 }
 
-impl NotSupportedError{
+impl NotSupportedError {
 	/// New error with a given message
 	pub fn new(msg: impl Into<String>) -> Self {
-		Self{msg: msg.into()}
+		Self { msg: msg.into() }
 	}
 }
 
 impl From<NotSupportedError> for KissXmlError {
-	fn from(e: NotSupportedError) -> Self {KissXmlError::NotSupportedError(e)}
+	fn from(e: NotSupportedError) -> Self {
+		KissXmlError::NotSupportedError(e)
+	}
 }
 
 impl Display for NotSupportedError {
@@ -275,6 +289,4 @@ impl Display for NotSupportedError {
 	}
 }
 
-impl std::error::Error for NotSupportedError{}
-
-
+impl std::error::Error for NotSupportedError {}
