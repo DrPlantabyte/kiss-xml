@@ -170,7 +170,13 @@ impl Ord for ParseTreeNode {
 
 /** A wrapper of an io::Read similar to io::BufRead which has a variable-size buffer to support
 looking ahead and behind */
-pub struct ElasticReader {}
+pub(crate) struct ElasticReader {}
+
+impl ElasticReader {
+	pub(crate) fn peek_until(&self, p0: Vec<&[u8]>, p1: i32) -> Vec<u8> {
+		todo!()
+	}
+}
 
 /// Using in-file unit tests for ElasticReader because this module is not public
 #[cfg(test)]
@@ -180,22 +186,18 @@ mod tests {
 
 	/// test ElasticReader functionality
 	#[test]
-	fn test_elastic_reader() {
+	fn test_elastic_reader_peek() {
 		let original_text = "0123456789abcdefghijklmnopqrstuvwxyz";
 		let src_reader = io::BufReader::new(original_text.clone().as_bytes());
 		let elastic_reader = ElasticReader::from(src_reader);
+		assert_eq!(elastic_reader.peek(6), "012345".as_bytes());
+		assert_eq!(elastic_reader.peek(usize::MAX), "0123456789abcdefghijklmnopqrstuvwxyz".as_bytes());
 		assert_eq!(elastic_reader.peek_until("345".as_bytes(), usize::MAX), Some("012345".as_bytes()));
 		assert_eq!(elastic_reader.peek_until("345".as_bytes(), usize::MAX), Some("012345".as_bytes()));
 		assert!(elastic_reader.peek_until("37".as_bytes(), usize::MAX).is_none());
 		assert!(elastic_reader.peek_until("9".as_bytes(), 7).is_none());
 		assert_eq!(elastic_reader.peek_until_str("345", usize::MAX), Some("012345"));
 		assert!(elastic_reader.peek_until_str("345", 2).is_none());
-		assert_eq!(elastic_reader.read_until("9".as_bytes(), usize::MAX), "0123456789".as_bytes());
-		assert_eq!(elastic_reader.read_until("9".as_bytes(), usize::MAX), "abcdefghijklmnopqrstuvwxyz".as_bytes());
-		//
-		let src_reader = io::BufReader::new(original_text.clone().as_bytes());
-		let elastic_reader = ElasticReader::from(src_reader);
-
 		todo!()
 	}
 }

@@ -233,6 +233,8 @@ as-is or with modification, without any limitations.
 
  */
 
+use crate::dom::Declaration;
+use crate::encodings::CharacterEncoding;
 use crate::errors::KissXmlError;
 use regex::Regex;
 use std::cell::OnceCell;
@@ -243,6 +245,7 @@ use std::path::Path;
 use std::{fs, io};
 
 pub mod dom;
+mod encodings;
 pub mod errors;
 mod parsing;
 
@@ -366,12 +369,29 @@ pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::K
 	parse_str(content)
 }
 
+/** peeks at teh start of a stream to figure out the character encoding and parse the XML declaration (if there is one) */
+fn sniff_encoding_declaration(
+	reader: &mut parsing::ElasticReader,
+) -> Result<(CharacterEncoding, Option<Declaration>), errors::KissXmlError> {
+	// sniff for an XML declaration to guess the encoding (also check for BOM, which would be handy)
+	// peek until '<?'. Char codes [60, 63] (or [00, 60, 00, 63] or [60, 00, 63, 00] in UTF-16)
+	// in all supported encodings
+	let token1 = [60u8, 63u8];
+	let token2 = [00u8, 60u8, 00u8, 63u8];
+	let token3 = [60u8, 00u8, 63u8, 00u8];
+	let search_tokens: Vec<&[u8]> = vec![&token1[..], &token2[..], &token3[..]];
+	let limit = 128;
+	let doc_start = reader.peek_until(search_tokens, limit);
+	// BOM check
+	todo!()
+}
+
 /** Reads the XML content from the given stream reader and parses it as an
 XML document. Note that this function will read to EOF before returning.
  */
 pub fn parse_stream(mut reader: impl Read) -> Result<dom::Document, errors::KissXmlError> {
 	let mut xml_reader = parsing::ElasticReader.from(reader);
-	// sniff for an XML declaration to guess the encoding
+	let (encoding, declaration) = sniff_encoding_declaration(xml_reader)?;
 	todo!();
 	// wrap the reader in the appropriate decoder and then parse as UTF-8
 	todo!()
