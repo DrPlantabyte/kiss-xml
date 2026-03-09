@@ -369,28 +369,6 @@ pub fn parse_filepath(path: impl AsRef<Path>) -> Result<dom::Document, errors::K
 	parse_str(content)
 }
 
-/** peeks at teh start of a stream to figure out the character encoding and parse the XML declaration (if there is one) */
-fn sniff_encoding_and_declaration(
-	reader: &mut parsing::ElasticReader,
-) -> Result<(CharacterEncoding, Option<Declaration>), errors::KissXmlError> {
-	let mut encoding = crate::encodings::CharacterEncoding::UTF8; // default
-	// sniff for an XML declaration to guess the encoding (also check for BOM, which would be handy)
-	// peek until '<?'. Char codes [60, 63] (or [00, 60, 00, 63] or [60, 00, 63, 00] in UTF-16)
-	// in all supported encodings
-	let token1 = [60u8, 63u8];
-	let token2 = [00u8, 60u8, 00u8, 63u8];
-	let token3 = [60u8, 00u8, 63u8, 00u8];
-	let search_tokens: Vec<&[u8]> = vec![&token1[..], &token2[..], &token3[..]];
-	let limit = 128;
-	let doc_start = reader.peek_until(search_tokens, limit);
-	// BOM check
-	
-	let bom_table = CharacterEncoding::bom_table();
-	
-	if doc_start.starts_with(&[])
-	todo!()
-}
-
 /** Reads the XML content from the given stream reader and parses it as an
 XML document. Note that this function will read to EOF before returning.
  */

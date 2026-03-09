@@ -3,10 +3,13 @@ this module contains utilities exclusive to parsing
 */
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::hash::Hasher;
 
 use crate::dom::*;
+use crate::encodings::CharacterEncoding;
 use crate::errors::*;
+use crate::{errors, parsing};
 
 /** special tree data structure for parsing which uses ID's as keys in a HashMap to work around limitations in Rust's lifetime syntax. It is used like a stack, though internally it uses a HashMap based data arena */
 #[derive(Debug, Default)]
@@ -168,6 +171,24 @@ impl Ord for ParseTreeNode {
 	}
 }
 
+/**
+Simple data struct for keeping track of the current line and column numbers while parsing.
+Defaults to line 1, column 1
+*/
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct LineColumnContext{
+	line: i64,
+	column: i64,
+}
+impl Display for LineColumnContext{
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "line {}, column {}", self.line, self.column)
+	}
+}
+impl Default for LineColumnContext {
+	fn default() -> Self {Self{line: 1, column: 1}}
+}
+
 /** A wrapper of an io::Read similar to io::BufRead which has a variable-size buffer to support
 looking ahead and behind */
 pub(crate) struct ElasticReader {}
@@ -175,6 +196,56 @@ pub(crate) struct ElasticReader {}
 impl ElasticReader {
 	pub(crate) fn peek_until(&self, p0: Vec<&[u8]>, p1: i32) -> Vec<u8> {
 		todo!()
+	}
+}
+
+
+/**
+peeks at the start of a stream to figure out the character encoding and parse the XML declaration
+(if there is one)
+*/
+pub fn sniff_encoding_and_declaration(
+	reader: &mut parsing::ElasticReader,
+) -> Result<(CharacterEncoding, Option<Declaration>), errors::KissXmlError> {
+	let mut encoding: Option<CharacterEncoding> = None;
+	reader.set_encoding(CharacterEncoding::UTF8);  // default encoding
+	// sniff for an XML declaration to guess the encoding (also check for BOM, which would be handy)
+	// see https://www.w3.org/TR/xml/#sec-prolog-dtd
+	// peek until '<?'. Char codes [60, 63] (or [00, 60, 00, 63] or [60, 00, 63, 00] in UTF-16)
+	// in all supported encodings
+	let lgqm_ascii = [60u8, 63u8];
+	let lgqm_utf16_be = [00u8, 60u8, 00u8, 63u8];
+	let lgqm_utf16_le = [60u8, 00u8, 63u8, 00u8];
+	let lgqm_utf32_be = [00u8, 00u8, 00u8, 60u8, 00u8, 00u8, 00u8, 63u8];
+	let lgqm_utf32_le = [60u8, 00u8, 00u8, 00u8, 63u8, 00u8, 00u8, 00u8];
+	let search_tokens: Vec<&[u8]> = vec![&lgqm_ascii, &lgqm_utf16_be, &lgqm_utf16_le, &lgqm_utf32_be, &lgqm_utf32_le];
+	let limit = 512;
+	let doc_start = reader.peek_until(search_tokens, limit);
+
+	// UTF BOM check (technically required, but only notepad.exe and some other Windows apps use it
+	let bom_table = CharacterEncoding::bom_table();
+	for (enc, mark) in bom_table {
+		if doc_start.starts_with(mark) {
+			encoding = Some(enc);
+			reader.skip(mark.len())?;
+			reader.set_encoding(enc);
+			break;
+		}
+	}
+	// NOTE: even if we don't know the encoding at this point, if it isn't UTF16 or UTF32, then
+	//       it is a one-byte-per-char encoding where standard english characters all use the
+	//       same byte codes as UTF-8 (or it is an unsupported encoding)
+	let decl_sip = reader.peek_fragment("<?", "?>");
+	match decl_sip {
+		None => Ok((encoding.unwrap_or_default(), None)),
+		Some(decl_str) {
+			if !decl_str.starts_with("<?xml"){
+				Err(ParsingError::new(format!("XML declaration must start with '<?xml' and end with '?>' (syntax error on {})", reader.get_line_col_ctx())))
+			} else {
+				// parse the declaration (and its encoding attribute)
+				todo!()
+			}
+		}
 	}
 }
 
