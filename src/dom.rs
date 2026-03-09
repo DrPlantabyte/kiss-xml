@@ -107,8 +107,8 @@ Gets the XML declaration for this document, if it has one (while the XML spec re
 	/**
 Sets the XML declaration for this document (a `None` argument will remove any existing declaration). While the XML spec requires a declaration at the start of every XML file, it is commonly omitted, especially when the XML is embedded in a stream or file.
 	 */
-	pub fn set_declaration(&mut self, decl: Declaration) {
-		self.declaration = Some(decl)
+	pub fn set_declaration(&mut self, decl: Option<Declaration>) {
+		self.declaration = decl
 	}
 
 	/**
@@ -1289,7 +1289,7 @@ impl Element {
 	Removes the given node at the given index in this element's list of child nodes (see the `children()` method). If the index is invalid, an Err result is returned, otherwise the removed node is return as an Ok result.
 	 */
 	pub fn remove(&mut self, index: usize) -> Result<Box<dyn Node>, IndexOutOfBounds> {
-		if index > self.child_nodes.len() {
+		if index >= self.child_nodes.len() {
 			return Err(IndexOutOfBounds::new(index as isize, Some((0, self.child_nodes.len() as isize))));
 		}
 		Ok(self.child_nodes.remove(index))

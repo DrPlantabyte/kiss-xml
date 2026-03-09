@@ -15,6 +15,9 @@ KISS-XML provides the basics for XML documents, including:
 * CDATA
 * Easy to use
 
+### New in version 1.1
+* Now supports single-quoted attributes in addition to double-quoted attributes (previously supported double-quoted attributes only)
+
 ## What's NOT included:
 * Schema handling
 * Document type declarations (DTDs will be preserved but not interpreted)

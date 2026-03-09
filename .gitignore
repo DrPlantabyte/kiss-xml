@@ -15,5 +15,8 @@
 *.profraw
 cobertura.xml
 
+# tarpaulin code-coverage report: cargo tarpaulin --out Html
+tarpaulin-report.html
+
 # random stuff
 politics.xml
