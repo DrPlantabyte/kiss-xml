@@ -5,7 +5,7 @@ Only a specific subset of common encodings are supported
 
 use std::collections::HashMap;
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CharacterEncoding {
 	UTF8,
 	UTF16LE,

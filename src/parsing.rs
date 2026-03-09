@@ -176,17 +176,19 @@ Simple data struct for keeping track of the current line and column numbers whil
 Defaults to line 1, column 1
 */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct LineColumnContext{
+pub(crate) struct LineColumnContext {
 	line: i64,
 	column: i64,
 }
-impl Display for LineColumnContext{
+impl Display for LineColumnContext {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		write!(f, "line {}, column {}", self.line, self.column)
 	}
 }
 impl Default for LineColumnContext {
-	fn default() -> Self {Self{line: 1, column: 1}}
+	fn default() -> Self {
+		Self { line: 1, column: 1 }
+	}
 }
 
 /** A wrapper of an io::Read similar to io::BufRead which has a variable-size buffer to support
@@ -199,7 +201,6 @@ impl ElasticReader {
 	}
 }
 
-
 /**
 peeks at the start of a stream to figure out the character encoding and parse the XML declaration
 (if there is one)
@@ -208,7 +209,7 @@ pub fn sniff_encoding_and_declaration(
 	reader: &mut parsing::ElasticReader,
 ) -> Result<(CharacterEncoding, Option<Declaration>), errors::KissXmlError> {
 	let mut encoding: Option<CharacterEncoding> = None;
-	reader.set_encoding(CharacterEncoding::UTF8);  // default encoding
+	reader.set_encoding(CharacterEncoding::UTF8); // default encoding
 	// sniff for an XML declaration to guess the encoding (also check for BOM, which would be handy)
 	// see https://www.w3.org/TR/xml/#sec-prolog-dtd
 	// peek until '<?'. Char codes [60, 63] (or [00, 60, 00, 63] or [60, 00, 63, 00] in UTF-16)
@@ -238,14 +239,18 @@ pub fn sniff_encoding_and_declaration(
 	let decl_sip = reader.peek_fragment("<?", "?>");
 	match decl_sip {
 		None => Ok((encoding.unwrap_or_default(), None)),
-		Some(decl_str) {
-			if !decl_str.starts_with("<?xml"){
-				Err(ParsingError::new(format!("XML declaration must start with '<?xml' and end with '?>' (syntax error on {})", reader.get_line_col_ctx())))
+		Some(decl_str) => {
+			if !decl_str.starts_with("<?xml") {
+				Err(ParsingError::new(format!(
+					"XML declaration must start with '<?xml' and end with '?>' (syntax error on {})",
+					reader.get_line_col_ctx()
+				)))
 			} else {
 				// parse the declaration (and its encoding attribute)
+
 				todo!()
 			}
-		}
+		},
 	}
 }
 
