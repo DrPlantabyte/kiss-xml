@@ -1,0 +1,22 @@
+edition = "2024"
+style_edition = "2024"
+max_width = 120
+use_small_heuristics = "Max"
+# NOTE: use_small_heuristics controls the following entries as a function of `max_width`:
+#     fn_call_width, attr_fn_like_width, struct_lit_width, struct_variant_width, array_width,
+#     chain_width, single_line_if_else_max_width
+disable_all_formatting = false
+fn_params_layout = "Compressed"
+force_explicit_abi = true
+hard_tabs = true
+match_arm_leading_pipes = "Preserve"
+match_block_trailing_comma = true
+merge_derives = true
+newline_style = "Unix"
+remove_nested_parens = true
+reorder_imports = true
+reorder_modules = true
+short_array_element_width_threshold = 20
+tab_spaces = 4
+use_field_init_shorthand = true
+use_try_shorthand = true

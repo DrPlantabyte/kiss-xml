@@ -645,11 +645,11 @@ fn parse_new_element(tag_content: &str, buffer: &String, tag_span: &(usize, usiz
 			)).into());
 		}
 		// note: v string contains enclosing quotes (if it follows correct XML syntax)
-		if v.len() < 2 || !v.starts_with('"') || !v.ends_with('"') {
+		if v.len() < 2 || !((v.starts_with('"') && v.ends_with('"')) || (v.starts_with('\'') && v.ends_with('\''))) {
 			// syntax error
 			let (line, col) = line_and_column(&buffer, tag_span.0);
 			return Err(errors::ParsingError::new(format!(
-				"invalid XML syntax on line {line}, column {col}: attribute value must be quoted with double-quotes"
+				"invalid XML syntax on line {line}, column {col}: attribute value must be quoted with single or double quotes"
 			)).into());
 		}
 		v = &v[1..(v.len()-1)]; // remove quotes
